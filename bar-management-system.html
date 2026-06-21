@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <base target="_self">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bar Management System</title>
+    <meta name="description" content="Sistema de gestão para bares e restaurantes com comunicação em tempo real">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        secondary: {
+                            50: '#fdf2f8',
+                            100: '#fce7f3',
+                            200: '#fbcfe8',
+                            300: '#f9a8d4',
+                            400: '#f472b6',
+                            500: '#ec4899',
+                            600: '#db2777',
+                            700: '#be185d',
+                            800: '#9d174d',
+                            900: '#831843',
+                        },
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444',
+                    },
+                    fontFamily: {
+                        'outfit': ['Outfit', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        '3xl': '1.5rem',
+                        '4xl': '2rem',
+                    },
+                    animation: {
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.5s ease-in',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(100%)' },
+                            '100%': { transform: 'translateY(0)' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .glassmorphism-dark {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .bottom-sheet {
+            transition: transform 0.3s ease-out;
+        }
+        .kanban-column {
+            min-height: 500px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-primary-50 to-secondary-50 font-outfit">
+    <!-- Sistema de Login -->
+    <div id="login-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-white">
+        <div class="w-full max-w-md p-8">
+            <div class="text-center mb-10">
+                <h1 class="text-4xl font-bold text-primary-800 mb-2">BarFlow</h1>
+                <p class="text-gray-600">Sistema de Gestão Inteligente</p>
+            </div>
+            
+            <div class="glassmorphism rounded-3xl p-8 shadow-xl">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Acesso Rápido</h2>
+                
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="loginAs('garcom')">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-primary-100 flex items-center justify-center">
+                                <i class="fas fa-user text-primary-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Módulo Garçom</h3>
+                                <p class="text-sm text-gray-600">Acesso mobile para salão</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="loginAs('cozinha')">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-warning-100 flex items-center justify-center">
+                                <i class="fas fa-utensils text-warning-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Módulo KDS</h3>
+                                <p class="text-sm text-gray-600">Cozinha e Bar</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="loginAs('caixa')">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-success-100 flex items-center justify-center">
+                                <i class="fas fa-cash-register text-success-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Módulo POS</h3>
+                                <p class="text-sm text-gray-600">Frente de Caixa</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                    </div>
+                    
+                    <div class="flex items-center justify-between p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="loginAs('admin')">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-xl bg-secondary-100 flex items-center justify-center">
+                                <i class="fas fa-chart-line text-secondary-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-800">Módulo Admin</h3>
+                                <p class="text-sm text-gray-600">Gestão e Relatórios</p>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <div class="mt-8 pt-6 border-t border-gray-200">
+                    <div class="text-center">
+                        <p class="text-sm text-gray-600 mb-4">Ou entre com seu nome:</p>
+                        <div class="flex space-x-2">
+                            <input type="text" id="username" placeholder="Digite seu nome" class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            <button onclick="loginWithName()" class="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors">
+                                <i class="fas fa-sign-in-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulo Garçom (Mobile) -->
+    <div id="garcom-module" class="hidden min-h-screen bg-gradient-to-b from-primary-50 to-white">
+        <!-- Header -->
+        <header class="glassmorphism sticky top-0 z-40">
+            <div class="px-4 py-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                            <i class="fas fa-user text-primary-600"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-semibold text-gray-800" id="garcom-name">Carlos Silva</h1>
+                            <p class="text-xs text-gray-600">Garçom</p>
+                        </div>
+                    </div>
+                    <button onclick="logout()" class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
+                        <i class="fas fa-sign-out-alt text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dashboard - Mapa de Mesas -->
+        <main class="p-4">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Mapa de Mesas</h2>
+                <p class="text-gray-600">Status em tempo real</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4" id="mesas-grid"></div>
+
+            <!-- Cardápio Digital -->
+            <div class="mt-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Cardápio Digital</h2>
+                    <div class="flex space-x-2" id="categorias-tabs"></div>
+                </div>
+
+                <div class="overflow-x-auto scrollbar-hide mb-6">
+                    <div class="flex space-x-4 pb-4" id="produtos-scroll"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="fixed bottom-0 left-0 right-0 glassmorphism border-t border-gray-200">
+            <div class="flex justify-around py-3">
+                <button class="flex flex-col items-center space-y-1 text-primary-600">
+                    <i class="fas fa-home text-xl"></i>
+                    <span class="text-xs font-medium">Início</span>
+                </button>
+                <button class="flex flex-col items-center space-y-1 text-gray-500">
+                    <i class="fas fa-history text-xl"></i>
+                    <span class="text-xs font-medium">Pedidos</span>
+                </button>
+                <button onclick="openCart()" class="flex flex-col items-center space-y-1 text-gray-500 relative">
+                    <i class="fas fa-shopping-cart text-xl"></i>
+                    <span class="text-xs font-medium">Carrinho</span>
+                    <span id="cart-count" class="absolute -top-1 -right-1 bg-danger text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">0</span>
+                </button>
+                <button class="flex flex-col items-center space-y-1 text-gray-500">
+                    <i class="fas fa-cog text-xl"></i>
+                    <span class="text-xs font-medium">Config</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Bottom Sheet - Carrinho -->
+        <div id="cart-sheet" class="fixed inset-x-0 bottom-0 z-50 transform translate-y-full bottom-sheet">
+            <div class="glassmorphism-dark rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-white">Comanda Digital</h3>
+                    <button onclick="closeCart()" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+                        <i class="fas fa-times text-white"></i>
+                    </button>
+                </div>
+
+                <div id="cart-items" class="space-y-4 mb-6"></div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Observações Rápidas</label>
+                        <textarea id="observacoes" placeholder="Ex: Sem gelo, Bem passado..." class="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between text-white">
+                        <span class="text-lg font-semibold">Total:</span>
+                        <span id="cart-total" class="text-2xl font-bold">R$ 0,00</span>
+                    </div>
+
+                    <button onclick="enviarPedido()" class="w-full py-4 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors flex items-center justify-center space-x-2">
+                        <i class="fas fa-paper-plane"></i>
+                        <span>Enviar para Produção</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulo KDS (Cozinha/Bar) -->
+    <div id="kds-module" class="hidden min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <header class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Kitchen Display System</h1>
+                        <p class="text-gray-400">Monitor de produção em tempo real</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-success animate-pulse"></div>
+                            <span class="text-sm">Online</span>
+                        </div>
+                        <button onclick="logout()" class="px-4 py-2 bg-gray-700 rounded-xl hover:bg-gray-600 transition-colors">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="flex space-x-4 mt-6" id="kds-filters"></div>
+            </header>
+
+            <!-- Kanban Board -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="kanban-board"></div>
+        </div>
+    </div>
+
+    <!-- Módulo POS (Caixa) -->
+    <div id="pos-module" class="hidden min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <header class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Ponto de Venda</h1>
+                        <p class="text-gray-600">Gestão de mesas e fechamento</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <p class="text-sm text-gray-600">Operador</p>
+                            <p class="font-semibold text-gray-800">Maria Santos</p>
+                        </div>
+                        <button onclick="logout()" class="px-4 py-2 bg-gray-200 rounded-xl hover:bg-gray-300 transition-colors">
+                            <i class="fas fa-sign-out-alt text-gray-700"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Barra Lateral - Mesas -->
+                <div class="lg:col-span-1">
+                    <div class="glassmorphism rounded-3xl p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">Mesas Ativas</h2>
+                        <div id="mesas-ativas" class="space-y-3"></div>
+                    </div>
+                </div>
+
+                <!-- Área Principal - Detalhes da Mesa -->
+                <div class="lg:col-span-2">
+                    <div class="glassmorphism rounded-3xl p-6">
+                        <div id="mesa-detalhes"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Módulo Admin -->
+    <div id="admin-module" class="hidden min-h-screen bg-gradient-to-br from-gray-50 to-white">
+        <div class="container mx-auto px-4 py-6">
+            <!-- Header -->
+            <header class="mb-8">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Painel Administrativo</h1>
+                        <p class="text-gray-600">Gestão completa do estabelecimento</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="logout()" class="px-4 py-2 bg-gray-200 rounded-xl hover:bg-gray-300 transition-colors">
+                            <i class="fas fa-sign-out-alt text-gray-700"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Cards de Métricas -->
+                <div class="glassmorphism rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">Faturamento Hoje</h3>
+                        <i class="fas fa-chart-line text-primary-600 text-xl"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">R$ 2.847,50</p>
+                    <p class="text-sm text-success mt-2"><i class="fas fa-arrow-up"></i> 12% vs ontem</p>
+                </div>
+
+                <div class="glassmorphism rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">Ticket Médio</h3>
+                        <i class="fas fa-receipt text-secondary-600 text-xl"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">R$ 85,30</p>
+                    <p class="text-sm text-gray-600 mt-2">Por mesa</p>
+                </div>
+
+                <div class="glassmorphism rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold text-gray-700">Mesas Ocupadas</h3>
+                        <i class="fas fa-chair text-warning-600 text-xl"></i>
+                    </div>
+                    <p class="text-3xl font-bold text-gray-800">14/20</p>
+                    <p class="text-sm text-gray-600 mt-2">70% de ocupação</p>
+                </div>
+            </div>
+
+            <!-- Abas de Gestão -->
+            <div class="mb-6">
+                <div class="flex space-x-4 border-b border-gray-200" id="admin-tabs"></div>
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div id="admin-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Data Layer - Todas as informações do sistema
+        const systemData = {
+            // Usuários do sistema
+            usuarios: [
+                { "id": 1, "nome": "Carlos Silva", "funcao": "garcom", "pin": "1234" },
+                { "id": 2, "nome": "Ana Costa", "funcao": "garcom", "pin": "5678" },
+                { "id": 3, "nome": "Roberto Alves", "funcao": "cozinha", "pin": "9012" },
+                { "id": 4, "nome": "Maria Santos", "funcao": "caixa", "pin": "3456" },
+                { "id": 5, "nome": "Admin Master", "funcao": "admin", "pin": "7890" }
+            ],
+
+            // Mesas do estabelecimento
+            mesas: [
+                { "id": 1, "numero": "01", "capacidade": 4, "status": "livre", "garcom": null, "pedidos": [] },
+                { "id": 2, "numero": "02", "capacidade": 2, "status": "ocupada", "garcom": "Carlos Silva", "pedidos": [101] },
+                { "id": 3, "numero": "03", "capacidade": 6, "status": "aguardando", "garcom": "Ana Costa", "pedidos": [102, 103] },
+                { "id": 4, "numero": "04", "capacidade": 4, "status": "ocupada", "garcom": "Carlos Silva", "pedidos": [104] },
+                { "id": 5, "numero": "05", "capacidade": 2, "status": "livre", "garcom": null, "pedidos": [] },
+                { "id": 6, "numero": "06", "capacidade": 8, "status": "ocupada", "garcom": "Ana Costa", "pedidos": [105] },
+                { "id": 7, "numero": "07", "capacidade": 4, "status": "aguardando", "garcom": "Carlos Silva", "pedidos": [106] },
+                { "id": 8, "numero": "08", "capacidade": 2, "status": "livre", "garcom": null, "pedidos": [] }
+            ],
+
+            // Categorias do cardápio
+            categorias: [
+                { "id": 1, "nome": "Bebidas", "icone": "fas fa-wine-glass", "cor": "primary" },
+                { "id": 2, "nome": "Comidas", "icone": "fas fa-utensils", "cor": "warning" },
+                { "id": 3, "nome": "Sobremesas", "icone": "fas fa-ice-cream", "cor": "secondary" },
+                { "id": 4, "nome": "Entradas", "icone": "fas fa-apple-alt", "cor": "success" }
+            ],
+
+            // Produtos do cardápio
+            produtos: [
+                { "id": 1, "nome": "Cerveja Artesanal", "categoria": 1, "preco": 18.90, "estoque": "ilimitado", "ativo": true, "imagem": "https://picsum.photos/200?random=1" },
+                { "id": 2, "nome": "Caipirinha", "categoria": 1, "preco": 22.50, "estoque": "ilimitado", "ativo": true, "imagem": "https://picsum.photos/200?random=2" },
+                { "id": 3, "nome": "Refrigerante", "categoria": 1, "preco": 8.90, "estoque": "ilimitado", "ativo": true, "imagem": "https://picsum.photos/200?random=3" },
+                { "id": 4, "nome": "Hambúrguer Artesanal", "categoria": 2, "preco": 38.90, "estoque": 45, "ativo": true, "imagem": "https://picsum.photos/200?random=4" },
+                { "id": 5, "nome": "Pizza Margherita", "categoria": 2, "preco": 52.90, "estoque": 32, "ativo": true, "imagem": "https://picsum.photos/200?random=5" },
+                { "id": 6, "nome": "Salada Caesar", "categoria": 2, "preco": 28.50, "estoque": 28, "ativo": true, "imagem": "https://picsum.photos/200?random=6" },
+                { "id": 7, "nome": "Brownie", "categoria": 3, "preco": 18.90, "estoque": 25, "ativo": true, "imagem": "https://picsum.photos/200?random=7" },
+                { "id": 8, "nome": "Petit Gateau", "categoria": 3, "preco": 32.90, "estoque": 18, "ativo": true, "imagem": "https://picsum.photos/200?random=8" },
+                { "id": 9, "nome": "Bruschetta", "categoria": 4, "preco": 24.90, "estoque": 35, "ativo": true, "imagem": "https://picsum.photos/200?random=9" },
+                { "id": 10, "nome": "Batata Frita", "categoria": 4, "preco": 19.90, "estoque": 42, "ativo": true, "imagem": "https://picsum.photos/200?random=10" }
+            ],
+
+            // Pedidos em produção (KDS)
+            pedidosKDS: [
+                { "id": 101, "mesa": "02", "itens": [{"produto": "Hambúrguer Artesanal", "quantidade": 2}], "prazo": "cozinha", "status": "na_fila", "tempo": 5, "criado": "2024-01-15T19:30:00" },
+                { "id": 102, "mesa": "03", "itens": [{"produto": "Caipirinha", "quantidade": 3}, {"produto": "Cerveja Artesanal", "quantidade": 2}], "prazo": "bar", "status": "em_preparo", "tempo": 12, "criado": "2024-01-15T19:25:00" },
+                { "id": 103, "mesa": "03", "itens": [{"produto": "Pizza Margherita", "quantidade": 1}], "prazo": "cozinha", "status": "pronto", "tempo": 25, "criado": "2024-01-15T19:15:00" },
+                { "id": 104, "mesa": "04", "itens": [{"produto": "Salada Caesar", "quantidade": 2}, {"produto": "Refrigerante", "quantidade": 2}], "prazo": "cozinha", "status": "na_fila", "tempo": 3, "criado": "2024-01-15T19:35:00" }
+            ],
+
+            // Métodos de pagamento
+            metodosPagamento: [
+                { "id": 1, "nome": "PIX", "icone": "fas fa-qrcode", "cor": "success" },
+                { "id": 2, "nome": "Cartão Crédito", "icone": "fas fa-credit-card", "cor": "primary" },
+                { "id": 3, "nome": "Cartão Débito", "icone": "fas fa-credit-card", "cor": "secondary" },
+                { "id": 4, "nome": "Dinheiro", "icone": "fas fa-money-bill-wave", "cor": "warning" }
+            ],
+
+            // Filtros KDS
+            filtrosKDS: [
+                { "id": "todos", "nome": "Todos", "icone": "fas fa-list" },
+                { "id": "cozinha", "nome": "Cozinha", "icone": "fas fa-utensils" },
+                { "id": "bar", "nome": "Bar", "icone": "fas fa-wine-glass" },
+                { "id": "urgentes", "nome": "Urgentes", "icone": "fas fa-exclamation-triangle" }
+            ],
+
+            // Abas Admin
+            abasAdmin: [
+                { "id": "dashboard", "nome": "Dashboard", "icone": "fas fa-chart-line" },
+                { "id": "cardapio", "nome": "Cardápio", "icone": "fas fa-utensils" },
+                { "id": "estoque", "nome": "Estoque", "icone": "fas fa-boxes" },
+                { "id": "equipe", "nome": "Equipe", "icone": "fas fa-users" },
+                { "id": "relatorios", "nome": "Relatórios", "icone": "fas fa-file-alt" }
+            ],
+
+            // Carrinho atual
+            carrinho: []
+        };
+
+        // Estado do sistema
+        let currentUser = null;
+        let currentModule = null;
+        let selectedCategory = 1;
+        let selectedTable = null;
+        let selectedFilter = 'todos';
+        let selectedAdminTab = 'dashboard';
+
+        // Funções de renderização reutilizáveis
+        function renderMesaItem(mesa) {
+            const statusColors = {
+                "livre": "bg-success",
+                "ocupada": "bg-warning",
+                "aguardando": "bg-danger"
+            };
+            
+            const statusTexts = {
+                "livre": "Livre",
+                "ocupada": "Ocupada",
+                "aguardando": "Aguardando Fechamento"
+            };
+            
+            const pulseClass = mesa.status === "aguardando" ? "animate-pulse-slow" : "";
+            
+            return `
+                <div class="relative ${pulseClass}">
+                    <div class="glassmorphism rounded-3xl p-4 text-center cursor-pointer hover:shadow-lg transition-shadow" onclick="selectTable(${mesa.id})">
+                        <div class="text-2xl font-bold text-gray-800 mb-2">${mesa.numero}</div>
+                        <div class="flex items-center justify-center space-x-2 mb-3">
+                            <i class="fas fa-user text-gray-500"></i>
+                            <span class="text-gray-700">${mesa.capacidade}</span>
+                        </div>
+                        <div class="flex items-center justify-center">
+                            <div class="w-3 h-3 rounded-full ${statusColors[mesa.status]} mr-2"></div>
+                            <span class="text-sm font-medium">${statusTexts[mesa.status]}</span>
+                        </div>
+                        ${mesa.garcom ? `<div class="mt-2 text-xs text-gray-600">${mesa.garcom}</div>` : ""}
+                    </div>
+                    ${mesa.status === "aguardando" ? 
+                        `<div class="absolute -top-2 -right-2 w-4 h-4 bg-danger rounded-full animate-pulse"></div>` : 
+                        ""}
+                </div>
+            `;
+        }
+
+        function renderProdutoCard(produto) {
+            const categoria = systemData.categorias.find(c => c.id === produto.categoria);
+            const corClasse = `bg-${categoria.cor}-100 text-${categoria.cor}-800`;
+            
+            return `
+                <div class="flex-shrink-0 w-48">
+                    <div class="glassmorphism rounded-3xl overflow-hidden">
+                        <img src="${produto.imagem}" alt="${produto.nome}" class="w-full h-32 object-cover" loading="lazy">
+                        <div class="p-4">
+                            <h3 class="font-semibold text-gray-800 mb-1">${produto.nome}</h3>
+                            <div class="flex items-center justify-between">
+                                <span class="text-lg font-bold text-primary-700">R$ ${produto.preco.toFixed(2)}</span>
+                                <button onclick="addToCart(${produto.id})" class="w-10 h-10 rounded-full bg-primary-600 text-white hover:bg-primary-700 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2">
+                                <span class="text-xs px-2 py-1 rounded-full ${corClasse}">
+                                    ${categoria.nome}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderCategoriaTab(categoria) {
+            const isActive = categoria.id === selectedCategory;
+            const activeClass = isActive ? "border-b-2 border-primary-600 text-primary-600" : "text-gray-600 hover:text-gray-800";
+            
+            return `
+                <button onclick="selectCategory(${categoria.id})" class="px-4 py-2 font-medium ${activeClass} transition-colors">
+                    <i class="${categoria.icone} mr-2"></i>
+                    ${categoria.nome}
+                </button>
+            `;
+        }
+
+        function renderCartItem(item, index) {
+            return `
+                <div class="flex items-center justify-between p-4 bg-white/10 rounded-xl">
+                    <div>
+                        <h4 class="font-medium text-white">${item.nome}</h4>
+                        <p class="text-sm text-gray-300">R$ ${item.preco.toFixed(2)}</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button onclick="updateCartQuantity(${index}, -1)" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center">
+                            <i class="fas fa-minus text-white"></i>
+                        </button>
+                        <span class="text-white font-semibold">${item.quantidade}</span>
+                        <button onclick="updateCartQuantity(${index}, 1)" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center">
+                            <i class="fas fa-plus text-white"></i>
+                        </button>
+                        <button onclick="removeFromCart(${index})" class="w-8 h-8 rounded-full bg-danger/20 hover:bg-danger/30 transition-colors flex items-center justify-center">
+                            <i class="fas fa-trash text-danger"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderKDSFilter(filter) {
+            const isActive = filter.id === selectedFilter;
+            const activeClass = isActive ? "bg-primary-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700";
+            
+            return `
+                <button onclick="selectKDSFilter('${filter.id}')" class="px-4 py-2 rounded-xl ${activeClass} transition-colors flex items-center space-x-2">
+                    <i class="${filter.icone}"></i>
+                    <span>${filter.nome}</span>
+                </button>
+            `;
+        }
+
+        function renderKanbanColumn(status, pedidos) {
+            const columnTitles = {
+                "na_fila": "Na Fila",
+                "em_preparo": "Em Preparo",
+                "pronto": "Pronto"
+            };
+            
+            const columnColors = {
+                "na_fila": "border-gray-600",
+                "em_preparo": "border-warning-500",
+                "pronto": "border-success-500"
+            };
+            
+            return `
+                <div class="kanban-column">
+                    <div class="mb-4">
+                        <h3 class="text-xl font-bold flex items-center">
+                            <span class="mr-2">${columnTitles[status]}</span>
+                            <span class="px-3 py-1 rounded-full bg-gray-800 text-sm">${pedidos.length}</span>
+                        </h3>
+                    </div>
+                    <div class="space-y-4">
+                        ${pedidos.map(pedido => renderKDSOrder(pedido)).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderKDSOrder(pedido) {
+            const isUrgent = pedido.tempo > 20;
+            const urgentClass = isUrgent ? "border-danger-500 bg-danger-900/20" : "border-gray-700";
+            const prazoText = pedido.prazo === "cozinha" ? "Cozinha" : "Bar";
+            const prazoIcon = pedido.prazo === "cozinha" ? "fas fa-utensils" : "fas fa-wine-glass";
+            
+            return `
+                <div class="glassmorphism-dark rounded-2xl p-4 border ${urgentClass}">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-2">
+                            <i class="${prazoIcon} text-gray-400"></i>
+                            <span class="font-semibold">Mesa ${pedido.mesa}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-clock ${isUrgent ? 'text-danger-400' : 'text-gray-400'}"></i>
+                            <span class="${isUrgent ? 'text-danger-400 font-bold' : 'text-gray-300'}">${pedido.tempo}min</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2 mb-4">
+                        ${pedido.itens.map(item => `
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-300">${item.quantidade}x ${item.produto}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        ${pedido.status === "na_fila" ? `
+                            <button onclick="updateOrderStatus(${pedido.id}, 'em_preparo')" class="flex-1 py-2 bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors text-center">
+                                Iniciar
+                            </button>
+                        ` : ""}
+                        
+                        ${pedido.status === "em_preparo" ? `
+                            <button onclick="updateOrderStatus(${pedido.id}, 'pronto')" class="flex-1 py-2 bg-success-600 rounded-lg hover:bg-success-700 transition-colors text-center">
+                                Concluir
+                            </button>
+                        ` : ""}
+                        
+                        ${pedido.status === "pronto" ? `
+                            <button onclick="removeOrder(${pedido.id})" class="flex-1 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors text-center">
+                                Entregue
+                            </button>
+                        ` : ""}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminTab(tab) {
+            const isActive = tab.id === selectedAdminTab;
+            const activeClass = isActive ? "border-primary-600 text-primary-600" : "border-transparent text-gray-600 hover:text-gray-800";
+            
+            return `
+                <button onclick="selectAdminTab('${tab.id}')" class="px-4 py-3 font-medium border-b-2 ${activeClass} transition-colors">
+                    <i class="${tab.icone} mr-2"></i>
+                    ${tab.nome}
+                </button>
+            `;
+        }
+
+        // Funções de controle do sistema
+        function loginAs(module) {
+            currentModule = module;
+            currentUser = systemData.usuarios.find(u => u.funcao === module);
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById(`${module}-module`).classList.remove('hidden');
+            
+            initializeModule(module);
+        }
+
+        function loginWithName() {
+            const username = document.getElementById('username').value.trim();
+            if (username) {
+                currentUser = { nome: username, funcao: 'garcom' };
+                loginAs('garcom');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            currentModule = null;
+            
+            // Esconder todos os módulos
+            document.querySelectorAll('[id$="-module"]').forEach(el => el.classList.add('hidden'));
+            document.getElementById('login-screen').classList.remove('hidden');
+            
+            // Resetar estados
+            systemData.carrinho = [];
+            selectedTable = null;
+            updateCartCount();
+        }
+
+        function initializeModule(module) {
+            switch(module) {
+                case 'garcom':
+                    renderMesas();
+                    renderCategorias();
+                    renderProdutos();
+                    updateCartCount();
+                    break;
+                    
+                case 'cozinha':
+                    renderKDSFilters();
+                    renderKanban();
+                    break;
+                    
+                case 'caixa':
+                    renderMesasAtivas();
+                    break;
+                    
+                case 'admin':
+                    renderAdminTabs();
+                    renderAdminContent();
+                    break;
+            }
+        }
+
+        function renderMesas() {
+            const container = document.getElementById('mesas-grid');
+            container.innerHTML = systemData.mesas.map(mesa => renderMesaItem(mesa)).join("");
+        }
+
+        function renderCategorias() {
+            const container = document.getElementById('categorias-tabs');
+            container.innerHTML = systemData.categorias.map(cat => renderCategoriaTab(cat)).join("");
+        }
+
+        function renderProdutos() {
+            const produtosFiltrados = systemData.produtos.filter(p => p.categoria === selectedCategory && p.ativo);
+            const container = document.getElementById('produtos-scroll');
+            container.innerHTML = produtosFiltrados.map(prod => renderProdutoCard(prod)).join("");
+        }
+
+        function selectCategory(categoryId) {
+            selectedCategory = categoryId;
+            renderCategorias();
+            renderProdutos();
+        }
+
+        function selectTable(tableId) {
+            selectedTable = tableId;
+            const mesa = systemData.mesas.find(m => m.id === tableId);
+            alert(`Mesa ${mesa.numero} selecionada. Adicione produtos ao carrinho.`);
+        }
+
+        function addToCart(productId) {
+            if (!selectedTable) {
+                alert('Selecione uma mesa primeiro!');
+                return;
+            }
+            
+            const produto = systemData.produtos.find(p => p.id === productId);
+            const existingItem = systemData.carrinho.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantidade++;
+            } else {
+                systemData.carrinho.push({
+                    id: produto.id,
+                    nome: produto.nome,
+                    preco: produto.preco,
+                    quantidade: 1
+                });
+            }
+            
+            updateCartCount();
+            alert(`${produto.nome} adicionado ao carrinho!`);
+        }
+
+        function updateCartCount() {
+            const totalItems = systemData.carrinho.reduce((sum, item) => sum + item.quantidade, 0);
+            document.getElementById('cart-count').textContent = totalItems;
+            
+            // Atualizar total
+            const total = systemData.carrinho.reduce((sum, item) => sum + (item.preco * item.quantidade), 0);
+            document.getElementById('cart-total').textContent = `R$ ${total.toFixed(2)}`;
+        }
+
+        function openCart() {
+            renderCartItems();
+            document.getElementById('cart-sheet').classList.remove('translate-y-full');
+        }
+
+        function closeCart() {
+            document.getElementById('cart-sheet').classList.add('translate-y-full');
+        }
+
+        function renderCartItems() {
+            const container = document.getElementById('cart-items');
+            container.innerHTML = systemData.carrinho.map((item, index) => renderCartItem(item, index)).join("");
+        }
+
+        function updateCartQuantity(index, delta) {
+            const item = systemData.carrinho[index];
+            item.quantidade += delta;
+            
+            if (item.quantidade <= 0) {
+                systemData.carrinho.splice(index, 1);
+            }
+            
+            updateCartCount();
+            renderCartItems();
+        }
+
+        function removeFromCart(index) {
+            systemData.carrinho.splice(index, 1);
+            updateCartCount();
+            renderCartItems();
+        }
+
+        function enviarPedido() {
+            if (systemData.carrinho.length === 0) {
+                alert('Carrinho vazio!');
+                return;
+            }
+            
+            if (!selectedTable) {
+                alert('Selecione uma mesa!');
+                return;
+            }
+            
+            const observacoes = document.getElementById('observacoes').value;
+            const mesa = systemData.mesas.find(m => m.id === selectedTable);
+            
+            // Criar pedido para KDS
+            const novoPedido = {
+                id: Date.now(),
+                mesa: mesa.numero,
+                itens: systemData.carrinho.map(item => ({
+                    produto: item.nome,
+                    quantidade: item.quantidade
+                })),
+                prazo: selectedCategory === 1 ? 'bar' : 'cozinha',
+                status: 'na_fila',
+                tempo: 0,
+                criado: new Date().toISOString(),
+                observacoes: observacoes
+            };
+            
+            systemData.pedidosKDS.push(novoPedido);
+            
+            // Limpar carrinho
+            systemData.carrinho = [];
+            updateCartCount();
+            closeCart();
+            
+            // Atualizar status da mesa
+            mesa.status = 'ocupada';
+            mesa.garcom = currentUser.nome;
+            mesa.pedidos.push(novoPedido.id);
+            
+            renderMesas();
+            
+            alert(`Pedido enviado para produção! Tempo estimado: < 3 segundos`);
+            
+            // Simular notificação sonora
+            playNotificationSound();
+        }
+
+        function playNotificationSound() {
+            // Em um sistema real, tocaria um som de notificação
+            console.log('🔔 Novo pedido recebido!');
+        }
+
+        function renderKDSFilters() {
+            const container = document.getElementById('kds-filters');
+            container.innerHTML = systemData.filtrosKDS.map(filter => renderKDSFilter(filter)).join("");
+        }
+
+        function selectKDSFilter(filterId) {
+            selectedFilter = filterId;
+            renderKDSFilters();
+            renderKanban();
+        }
+
+        function renderKanban() {
+            let pedidosFiltrados = systemData.pedidosKDS;
+            
+            // Aplicar filtros
+            if (selectedFilter === 'cozinha') {
+                pedidosFiltrados = pedidosFiltrados.filter(p => p.prazo === 'cozinha');
+            } else if (selectedFilter === 'bar') {
+                pedidosFiltrados = pedidosFiltrados.filter(p => p.prazo === 'bar');
+            } else if (selectedFilter === 'urgentes') {
+                pedidosFiltrados = pedidosFiltrados.filter(p => p.tempo > 20);
+            }
+            
+            // Organizar por status
+            const naFila = pedidosFiltrados.filter(p => p.status === 'na_fila');
+            const emPreparo = pedidosFiltrados.filter(p => p.status === 'em_preparo');
+            const pronto = pedidosFiltrados.filter(p => p.status === 'pronto');
+            
+            const container = document.getElementById('kanban-board');
+            container.innerHTML = `
+                ${renderKanbanColumn('na_fila', naFila)}
+                ${renderKanbanColumn('em_preparo', emPreparo)}
+                ${renderKanbanColumn('pronto', pronto)}
+            `;
+        }
+
+        function updateOrderStatus(orderId, newStatus) {
+            const pedido = systemData.pedidosKDS.find(p => p.id === orderId);
+            if (pedido) {
+                pedido.status = newStatus;
+                renderKanban();
+            }
+        }
+
+        function removeOrder(orderId) {
+            systemData.pedidosKDS = systemData.pedidosKDS.filter(p => p.id !== orderId);
+            renderKanban();
+        }
+
+        function renderMesasAtivas() {
+            const mesasOcupadas = systemData.mesas.filter(m => m.status !== 'livre');
+            const container = document.getElementById('mesas-ativas');
+            
+            container.innerHTML = mesasOcupadas.map(mesa => `
+                <div class="flex items-center justify-between p-3 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow cursor-pointer" onclick="selectMesaPOS(${mesa.id})">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+                            <span class="font-bold text-primary-700">${mesa.numero}</span>
+                        </div>
+                        <div>
+                            <h4 class="font-medium text-gray-800">Mesa ${mesa.numero}</h4>
+                            <p class="text-xs text-gray-600">${mesa.garcom || 'Sem garçom'}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-semibold text-gray-800">R$ 85,30</p>
+                        <span class="text-xs px-2 py-1 rounded-full ${mesa.status === 'aguardando' ? 'bg-danger-100 text-danger-800' : 'bg-warning-100 text-warning-800'}">
+                            ${mesa.status === 'aguardando' ? 'Aguardando' : 'Ativa'}
+                        </span>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        function selectMesaPOS(mesaId) {
+            const mesa = systemData.mesas.find(m => m.id === mesaId);
+            const container = document.getElementById('mesa-detalhes');
+            
+            container.innerHTML = `
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Mesa ${mesa.numero}</h2>
+                    <p class="text-gray-600">${mesa.garcom ? `Garçom: ${mesa.garcom}` : 'Sem garçom atribuído'}</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="glassmorphism rounded-2xl p-6">
+                        <h3 class="font-semibold text-gray-700 mb-4">Conta da Mesa</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">2x Hambúrguer</span>
+                                <span class="font-medium">R$ 77,80</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">3x Caipirinha</span>
+                                <span class="font-medium">R$ 67,50</span>
+                            </div>
+                            <div class="border-t pt-3">
+                                <div class="flex justify-between font-semibold text-lg">
+                                    <span>Total</span>
+                                    <span>R$ 145,30</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glassmorphism rounded-2xl p-6">
+                        <h3 class="font-semibold text-gray-700 mb-4">Divisão de Conta</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-2">Número de pessoas</label>
+                                <input type="number" min="1" value="2" class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                            </div>
+                            <button class="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                                Dividir Igualmente
+                            </button>
+                            <p class="text-sm text-gray-600 text-center">R$ 72,65 por pessoa</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold text-gray-700 mb-4">Métodos de Pagamento</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="payment-methods"></div>
+                    
+                    <div class="flex space-x-4">
+                        <button class="flex-1 py-4 bg-success-600 text-white rounded-xl font-semibold hover:bg-success-700 transition-colors">
+                            <i class="fas fa-print mr-2"></i>Imprimir Pré-conta
+                        </button>
+                        <button class="flex-1 py-4 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-check mr-2"></i>Fechar Conta
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Renderizar métodos de pagamento
+            const paymentContainer = document.getElementById('payment-methods');
+            paymentContainer.innerHTML = systemData.metodosPagamento.map(method => `
+                <button class="p-4 rounded-xl bg-white border border-gray-200 hover:border-${method.cor}-500 hover:shadow-md transition-all text-center">
+                    <i class="${method.icone} text-2xl text-${method.cor}-600 mb-2"></i>
+                    <p class="font-medium text-gray-800">${method.nome}</p>
+                </button>
+            `).join("");
+        }
+
+        function renderAdminTabs() {
+            const container = document.getElementById('admin-tabs');
+            container.innerHTML = systemData.abasAdmin.map(tab => renderAdminTab(tab)).join("");
+        }
+
+        function selectAdminTab(tabId) {
+            selectedAdminTab = tabId;
+            renderAdminTabs();
+            renderAdminContent();
+        }
+
+        function renderAdminContent() {
+            const container = document.getElementById('admin-content');
+            
+            switch(selectedAdminTab) {
+                case 'dashboard':
+                    container.innerHTML = renderAdminDashboard();
+                    break;
+                case 'cardapio':
+                    container.innerHTML = renderAdminCardapio();
+                    break;
+                case 'estoque':
+                    container.innerHTML = renderAdminEstoque();
+                    break;
+                case 'equipe':
+                    container.innerHTML = renderAdminEquipe();
+                    break;
+                case 'relatorios':
+                    container.innerHTML = renderAdminRelatorios();
+                    break;
+            }
+        }
+
+        function renderAdminDashboard() {
+            return `
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glassmorphism rounded-3xl p-6">
+                        <h3 class="font-bold text-gray-800 mb-4">Faturamento por Horário</h3>
+                        <div class="h-64 flex items-end space-x-2">
+                            ${[65, 80, 95, 85, 70, 90, 100, 85, 75, 60, 50, 40].map((height, index) => `
+                                <div class="flex-1 flex flex-col items-center">
+                                    <div class="w-8 bg-primary-500 rounded-t-lg" style="height: ${height}%"></div>
+                                    <span class="text-xs text-gray-600 mt-2">${index + 10}h</span>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                    
+                    <div class="glassmorphism rounded-3xl p-6">
+                        <h3 class="font-bold text-gray-800 mb-4">Produtos Mais Vendidos</h3>
+                        <div class="space-y-4">
+                            ${[
+                                { nome: "Hambúrguer Artesanal", vendas: 142 },
+                                { nome: "Caipirinha", vendas: 128 },
+                                { nome: "Cerveja Artesanal", vendas: 115 },
+                                { nome: "Pizza Margherita", vendas: 98 },
+                                { nome: "Batata Frita", vendas: 87 }
+                            ].map(item => `
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-700">${item.nome}</span>
+                                    <span class="font-semibold">${item.vendas} unidades</span>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminCardapio() {
+            return `
+                <div class="glassmorphism rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-gray-800">Gestão de Cardápio</h3>
+                        <button class="px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Novo Produto
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Produto</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Categoria</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Preço</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Estoque</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Status</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${systemData.produtos.map(produto => {
+                                    const categoria = systemData.categorias.find(c => c.id === produto.categoria);
+                                    return `
+                                        <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                            <td class="py-3 px-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <img src="${produto.imagem}" alt="${produto.nome}" class="w-10 h-10 rounded-lg object-cover">
+                                                    <span class="font-medium">${produto.nome}</span>
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-3 py-1 rounded-full text-xs ${categoria ? `bg-${categoria.cor}-100 text-${categoria.cor}-800` : ''}">
+                                                    ${categoria ? categoria.nome : 'N/A'}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4 font-semibold">R$ ${produto.preco.toFixed(2)}</td>
+                                            <td class="py-3 px-4">
+                                                ${produto.estoque === 'ilimitado' ? 
+                                                    '<span class="text-success">Ilimitado</span>' : 
+                                                    `<span>${produto.estoque} unidades</span>`}
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <span class="px-3 py-1 rounded-full text-xs ${produto.ativo ? 'bg-success-100 text-success-800' : 'bg-gray-100 text-gray-800'}">
+                                                    ${produto.ativo ? 'Ativo' : 'Inativo'}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-4">
+                                                <div class="flex space-x-2">
+                                                    <button class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button onclick="toggleProductStatus(${produto.id})" class="p-2 ${produto.ativo ? 'text-warning-600 hover:bg-warning-50' : 'text-success-600 hover:bg-success-50'} rounded-lg">
+                                                        <i class="fas ${produto.ativo ? 'fa-eye-slash' : 'fa-eye'}"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminEstoque() {
+            const produtosComEstoque = systemData.produtos.filter(p => p.estoque !== 'ilimitado');
+            
+            return `
+                <div class="glassmorphism rounded-3xl p-6">
+                    <h3 class="font-bold text-gray-800 mb-6">Controle de Estoque</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${produtosComEstoque.map(produto => `
+                            <div class="bg-white rounded-2xl p-4 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="font-semibold text-gray-800">${produto.nome}</h4>
+                                    <span class="text-sm font-medium ${produto.estoque < 10 ? 'text-danger' : 'text-gray-600'}">
+                                        ${produto.estoque} unidades
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                        <div class="h-full ${produto.estoque < 10 ? 'bg-danger' : produto.estoque < 20 ? 'bg-warning' : 'bg-success'}" 
+                                             style="width: ${Math.min(100, (produto.estoque / 50) * 100)}%"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex space-x-2">
+                                    <button onclick="adjustStock(${produto.id}, -1)" class="flex-1 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button onclick="adjustStock(${produto.id}, 1)" class="flex-1 py-2 bg-primary-100 text-primary-700 rounded-lg hover:bg-primary-200 transition-colors">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminEquipe() {
+            return `
+                <div class="glassmorphism rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="font-bold text-gray-800">Gestão de Equipe</h3>
+                        <button class="px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors">
+                            <i class="fas fa-user-plus mr-2"></i>Novo Funcionário
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Nome</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Função</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">PIN</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Status</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 font-semibold">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${systemData.usuarios.map(usuario => `
+                                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                        <td class="py-3 px-4">
+                                            <div class="flex items-center space-x-3">
+                                                <div class="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+                                                    <i class="fas fa-user text-primary-600"></i>
+                                                </div>
+                                                <span class="font-medium">${usuario.nome}</span>
+                                            </div>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <span class="capitalize">${usuario.funcao}</span>
+                                        </td>
+                                        <td class="py-3 px-4 font-mono">${usuario.pin}</td>
+                                        <td class="py-3 px-4">
+                                            <span class="px-3 py-1 rounded-full text-xs bg-success-100 text-success-800">
+                                                Ativo
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-4">
+                                            <div class="flex space-x-2">
+                                                <button class="p-2 text-primary-600 hover:bg-primary-50 rounded-lg">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="p-2 text-danger-600 hover:bg-danger-50 rounded-lg">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminRelatorios() {
+            return `
+                <div class="glassmorphism rounded-3xl p-6">
+                    <h3 class="font-bold text-gray-800 mb-6">Relatórios e Analytics</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                        <div class="space-y-4">
+                            <button class="w-full p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow text-left">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800">Relatório Diário</h4>
+                                        <p class="text-sm text-gray-600">Vendas do dia atual</p>
+                                    </div>
+                                    <i class="fas fa-file-alt text-primary-600 text-xl"></i>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow text-left">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800">Relatório Semanal</h4>
+                                        <p class="text-sm text-gray-600">Comparativo semanal</p>
+                                    </div>
+                                    <i class="fas fa-chart-bar text-secondary-600 text-xl"></i>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <button class="w-full p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow text-left">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800">Relatório Mensal</h4>
+                                        <p class="text-sm text-gray-600">Faturamento mensal</p>
+                                    </div>
+                                    <i class="fas fa-calendar-alt text-success-600 text-xl"></i>
+                                </div>
+                            </button>
+                            
+                            <button class="w-full p-4 bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow text-left">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800">Performance da Equipe</h4>
+                                        <p class="text-sm text-gray-600">Métricas por funcionário</p>
+                                    </div>
+                                    <i class="fas fa-users text-warning-600 text-xl"></i>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-6">
+                        <h4 class="font-semibold text-gray-800 mb-4">Exportar Dados</h4>
+                        <div class="flex flex-wrap gap-4">
+                            <button class="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors">
+                                <i class="fas fa-file-excel mr-2"></i>Excel
+                            </button>
+                            <button class="px-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-900 transition-colors">
+                                <i class="fas fa-file-pdf mr-2"></i>PDF
+                            </button>
+                            <button class="px-6 py-3 bg-success-600 text-white rounded-xl hover:bg-success-700 transition-colors">
+                                <i class="fas fa-file-csv mr-2"></i>CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Funções auxiliares do admin
+        function toggleProductStatus(productId) {
+            const produto = systemData.produtos.find(p => p.id === productId);
+            if (produto) {
+                produto.ativo = !produto.ativo;
+                renderAdminCardapio();
+            }
+        }
+
+        function adjustStock(productId, amount) {
+            const produto = systemData.produtos.find(p => p.id === productId);
+            if (produto && produto.estoque !== 'ilimitado') {
+                produto.estoque = Math.max(0, produto.estoque + amount);
+                renderAdminEstoque();
+            }
+        }
+
+        // Inicialização do sistema
+        document.addEventListener('DOMContentLoaded', function() {
+            // Configurar navegação via JavaScript para todos os links
+            document.addEventListener('click', function(event) {
+                const link = event.target.closest('a[href^="#"]');
+                if (!link) return;
+                event.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+
+            // Simular dados em tempo real para KDS
+            setInterval(() => {
+                if (currentModule === 'cozinha') {
+                    // Atualizar tempos dos pedidos
+                    systemData.pedidosKDS.forEach(pedido => {
+                        if (pedido.status !== 'pronto') {
+                            pedido.tempo += 1;
+                        }
+                    });
+                    renderKanban();
+                }
+            }, 60000); // Atualiza a cada minuto
+        });
+    </script>
+</body>
+</html>

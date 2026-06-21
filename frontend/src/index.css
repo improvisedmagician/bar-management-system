@@ -1,0 +1,116 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    background-color: #09090b !important;
+    color: #e2e8f0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  ::selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: #bfdbfe;
+  }
+  
+  #root {
+    background-color: #09090b;
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+
+  option {
+    background-color: #18181b;
+    color: #e2e8f0;
+  }
+}
+
+/* Glassmorphism Utilities */
+@layer utilities {
+  .glass {
+    @apply bg-[#18181b]/80 backdrop-blur-xl border-b border-white/5;
+  }
+  .glass-dark {
+    @apply bg-slate-900/80 backdrop-blur-md border border-white/10 shadow-2xl;
+  }
+  
+  .glass-card {
+    @apply bg-[#18181b]/60 backdrop-blur-lg border border-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.4)];
+  }
+
+  .glass-input {
+    @apply bg-[#27272a]/50 border border-white/10 text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all;
+  }
+
+  .text-gradient {
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400;
+  }
+  
+  .bg-gradient-modern {
+    background: radial-gradient(circle at top left, #1e1e24 0%, #09090b 100%);
+  }
+
+  /* Micro-animations */
+  .animate-slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out both;
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+/* Custom Scrollbar for Dark Mode */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Hide scrollbar for clean UI */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Print specific rules override */
+@media print {
+  body {
+    background-color: white !important;
+  }
+  .glass {
+    background: white !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    shadow: none !important;
+  }
+}
