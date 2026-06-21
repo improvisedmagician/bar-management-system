@@ -1,14 +1,9 @@
-import axios from 'axios';
+import { createClient } from '@supabase/supabase-js';
 
-// Na prática isso viria de uma variável de ambiente no Vercel (ex: import.meta.env.VITE_API_URL)
-export const API_URL = import.meta.env.VITE_API_URL || '/api';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://qwoyxomwaujlcdxxvouf.supabase.co';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_JyLDOOOYSq6i9PLiumC2eg_TM0KhMaB';
 
-export const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Tipos base
 export interface User {

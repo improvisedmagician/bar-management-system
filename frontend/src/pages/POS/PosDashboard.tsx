@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, Banknote, QrCode, Split, Calculator, ArrowLeftRight, Printer, Menu, X } from 'lucide-react';
-import { api } from '../../services/api';
+import { supabase } from '../../services/api';
 import type { Order, Table } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,9 +31,9 @@ export default function PosDashboard() {
 
   const fetchCurrentShift = async () => {
     try {
-      const res = await api.get('/cash-register/current');
-      if (res.data) {
-        setCashRegister(res.data);
+      const { data } = await supabase.from('cash_registers').select('*').order('id', { ascending: false }).limit(1);
+      if (data && data.length > 0) {
+        setCashRegister(data[0]);
         fetchOpenOrders();
       } else {
         setCashRegister(null);
@@ -46,8 +46,13 @@ export default function PosDashboard() {
   const handleOpenShift = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await api.post('/cash-register/open', { initial_balance: initialBalance });
-      setCashRegister(res.data);
+      const { data, error } = await supabase.from('cash_registers').insert([{ 
+        status: 'Aberto', 
+        initial_balance: initialBalance, 
+        current_balance: initialBalance 
+      }]).select().single();
+      if (error) throw error;
+      setCashRegister(data);
       setIsOpeningShift(false);
       fetchOpenOrders();
     } catch (e) {
@@ -56,9 +61,14 @@ export default function PosDashboard() {
   };
 
   const handleCloseShift = async () => {
+    if (!cashRegister) return;
     try {
-      const res = await api.post('/cash-register/close');
-      alert(`Caixa Fechado com Sucesso!\nSaldo Inicial: R$ ${res.data.initial_balance.toFixed(2)}\nTotal Recebido: R$ ${(res.data.current_balance - res.data.initial_balance).toFixed(2)}\nSaldo Final na Gaveta: R$ ${res.data.current_balance.toFixed(2)}`);
+      const { data, error } = await supabase.from('cash_registers')
+         .update({ status: 'Fechado', closed_at: new Date().toISOString() })
+         .eq('id', cashRegister.id)
+         .select().single();
+      if (error) throw error;
+      alert(`Caixa Fechado com Sucesso!\nSaldo Inicial: R$ ${data.initial_balance.toFixed(2)}\nTotal Recebido: R$ ${(data.current_balance - data.initial_balance).toFixed(2)}\nSaldo Final na Gaveta: R$ ${data.current_balance.toFixed(2)}`);
       setCashRegister(null);
       setIsClosingShift(false);
     } catch (e) {
@@ -68,8 +78,12 @@ export default function PosDashboard() {
 
   const fetchOpenOrders = async () => {
     try {
-      const res = await api.get<Order[]>('/orders/?status=Aberto');
-      setOrders(res.data);
+      const { data, error } = await supabase.from('orders')
+        .select(`*, table:tables(*), items:order_items(*, product:products(*)), payments:payments(*)`)
+        .eq('status', 'Aberto')
+        .order('id', { ascending: false });
+      if (error) throw error;
+      setOrders(data as any);
     } catch (e) {
       console.error('Erro ao buscar pedidos', e);
     }
@@ -77,8 +91,8 @@ export default function PosDashboard() {
   
   const fetchAvailableTables = async () => {
     try {
-      const res = await api.get<Table[]>('/tables/');
-      setAvailableTables(res.data.filter(t => t.status === 'Livre'));
+      const { data } = await supabase.from('tables').select('*').eq('status', 'Livre').order('number');
+      if (data) setAvailableTables(data);
     } catch (e) {
       console.error('Erro ao buscar mesas', e);
     }
@@ -92,7 +106,11 @@ export default function PosDashboard() {
   const handleTransferTable = async (newTableId: number) => {
     if (!selectedOrder) return;
     try {
-      await api.post(`/orders/${selectedOrder.id}/transfer?new_table_id=${newTableId}`);
+      const oldTableId = selectedOrder.table_id;
+      await supabase.from('orders').update({ table_id: newTableId }).eq('id', selectedOrder.id);
+      await supabase.from('tables').update({ status: 'Livre' }).eq('id', oldTableId);
+      await supabase.from('tables').update({ status: 'Ocupada' }).eq('id', newTableId);
+      
       setIsTransferModalOpen(false);
       setSelectedOrder(null);
       fetchOpenOrders();
@@ -110,9 +128,9 @@ export default function PosDashboard() {
 
   const handleAddTable = async () => {
     try {
-      const res = await api.get<Table[]>('/tables/');
-      const number = res.data.length > 0 ? Math.max(...res.data.map(t => t.number)) + 1 : 1;
-      await api.post('/tables/', { number, status: 'Livre' });
+      const { data: tables } = await supabase.from('tables').select('*');
+      const number = tables && tables.length > 0 ? Math.max(...tables.map(t => t.number)) + 1 : 1;
+      await supabase.from('tables').insert([{ number, status: 'Livre' }]);
       alert(`Mesa ${number} criada com sucesso e está livre para uso!`);
     } catch(e) { 
       alert('Erro ao criar mesa. Tente novamente.'); 
@@ -134,9 +152,17 @@ export default function PosDashboard() {
     if (!selectedOrder) return;
     try {
       for (const p of payments) {
-         await api.post(`/orders/${selectedOrder.id}/pay`, { amount: p.amount, method: p.method });
+         await supabase.from('payments').insert([{ order_id: selectedOrder.id, amount: p.amount, method: p.method }]);
+         if (cashRegister) {
+            const { data: cr } = await supabase.from('cash_registers').select('current_balance').eq('id', cashRegister.id).single();
+            if (cr) {
+               await supabase.from('cash_registers').update({ current_balance: cr.current_balance + p.amount }).eq('id', cashRegister.id);
+            }
+         }
       }
-      await api.post(`/orders/${selectedOrder.id}/close`);
+      await supabase.from('orders').update({ status: 'Fechado' }).eq('id', selectedOrder.id);
+      await supabase.from('tables').update({ status: 'Livre', current_waiter_id: null }).eq('id', selectedOrder.table_id);
+      
       setSelectedOrder(null);
       setPayments([]);
       fetchOpenOrders();

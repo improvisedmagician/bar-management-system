@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { supabase } from '../../services/api';
 import type { Table, User } from '../../services/api';
 import { LogOut, Home, ClipboardList, LayoutGrid } from 'lucide-react';
 
@@ -9,7 +9,7 @@ export default function WaiterDashboard() {
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const currentUserStr = localStorage.getItem('currentUser');
+  const currentUserStr = localStorage.getItem('bar_user');
   const user: User | null = currentUserStr ? JSON.parse(currentUserStr) : null;
 
   useEffect(() => {
@@ -26,8 +26,9 @@ export default function WaiterDashboard() {
 
   const fetchTables = async () => {
     try {
-      const response = await api.get<Table[]>('/tables/');
-      setTables(response.data);
+      const { data, error } = await supabase.from('tables').select('*').order('number');
+      if (error) throw error;
+      setTables(data as any);
     } catch (err) {
       console.error("Erro ao buscar mesas", err);
     } finally {
@@ -36,7 +37,7 @@ export default function WaiterDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem('bar_user');
     navigate('/waiter/login');
   };
 

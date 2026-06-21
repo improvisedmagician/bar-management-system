@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { QrCode, CreditCard, Banknote, Printer, ChevronLeft, ShoppingBag, Receipt } from 'lucide-react';
-import { api } from '../../services/api';
+import { supabase } from '../../services/api';
 import type { Product, Category, Order } from '../../services/api';
 
 interface CartItem {
@@ -39,10 +39,11 @@ export default function WaiterMenu() {
 
   const fetchMenu = async () => {
     try {
-      const catRes = await api.get<Category[]>('/menu/categories');
-      setCategories(catRes.data);
-      const prodRes = await api.get<Product[]>('/menu/products');
-      setProducts(prodRes.data);
+      const { data: catData } = await supabase.from('categories').select('*').order('id');
+      if (catData) setCategories(catData as any);
+      
+      const { data: prodData } = await supabase.from('products').select('*').eq('is_active', true).order('id');
+      if (prodData) setProducts(prodData as any);
     } catch (e) {
       console.error('Erro ao buscar cardápio', e);
     }
@@ -50,10 +51,17 @@ export default function WaiterMenu() {
 
   const fetchOrder = async () => {
     try {
-      const res = await api.get<Order[]>('/orders/?status=Aberto');
-      const order = res.data.find(o => o.table_id === Number(tableId));
-      if (order) setActiveOrder(order);
-      else setActiveOrder(null);
+      const { data } = await supabase.from('orders')
+        .select(`*, items:order_items(*, product:products(*)), payments:payments(*)`)
+        .eq('status', 'Aberto')
+        .eq('table_id', Number(tableId))
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        setActiveOrder(data[0] as any);
+      } else {
+        setActiveOrder(null);
+      }
     } catch (e) {
       console.error('Erro ao buscar pedido', e);
     }
@@ -76,16 +84,24 @@ export default function WaiterMenu() {
     try {
       let orderId = activeOrder?.id;
       if (!orderId) {
-        const orderRes = await api.post<Order>('/orders/', { table_id: Number(tableId), waiter_id: user?.id });
-        orderId = orderRes.data.id;
-        setActiveOrder(orderRes.data);
+        const { data, error } = await supabase.from('orders').insert([{ 
+          table_id: Number(tableId), 
+          waiter_id: user?.id,
+          status: 'Aberto'
+        }]).select().single();
+        if (error) throw error;
+        orderId = data.id;
+        setActiveOrder(data as any);
+        await supabase.from('tables').update({ status: 'Ocupada', current_waiter_id: user?.id }).eq('id', Number(tableId));
       }
       for (const item of cart) {
-        await api.post(`/orders/${orderId}/items`, {
+        await supabase.from('order_items').insert([{
+          order_id: orderId,
           product_id: item.product.id,
           quantity: item.quantity,
-          observations: item.observations || null
-        });
+          observations: item.observations || null,
+          status: 'Pendente'
+        }]);
       }
       setCart([]);
       setIsCartOpen(false);
@@ -111,9 +127,14 @@ export default function WaiterMenu() {
     if (!activeOrder) return;
     try {
       for (const p of payments) {
-        await api.post(`/orders/${activeOrder.id}/pay`, { amount: p.amount, method: p.method });
+        await supabase.from('payments').insert([{ order_id: activeOrder.id, amount: p.amount, method: p.method }]);
+        const { data: crs } = await supabase.from('cash_registers').select('*').eq('status', 'Aberto').order('id', { ascending: false }).limit(1);
+        if (crs && crs.length > 0) {
+           await supabase.from('cash_registers').update({ current_balance: crs[0].current_balance + p.amount }).eq('id', crs[0].id);
+        }
       }
-      await api.post(`/orders/${activeOrder.id}/close`);
+      await supabase.from('orders').update({ status: 'Fechado' }).eq('id', activeOrder.id);
+      await supabase.from('tables').update({ status: 'Livre', current_waiter_id: null }).eq('id', activeOrder.table_id);
       navigate('/waiter/dashboard');
     } catch (e) {
       alert('Erro ao fechar conta.');

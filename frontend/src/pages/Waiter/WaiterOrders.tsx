@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
+import { supabase } from '../../services/api';
 import type { Order, User } from '../../services/api';
 import { Home, ClipboardList, LayoutGrid, Clock, CheckCircle, ChefHat } from 'lucide-react';
 
@@ -11,7 +11,7 @@ export default function WaiterOrders() {
   const notifiedItems = useRef<Set<number>>(new Set());
   
   
-  const currentUserStr = localStorage.getItem('currentUser');
+  const currentUserStr = localStorage.getItem('bar_user');
   const user: User | null = currentUserStr ? JSON.parse(currentUserStr) : null;
 
   useEffect(() => {
@@ -49,14 +49,16 @@ export default function WaiterOrders() {
 
   const fetchOrders = async (isFirstLoad = false) => {
     try {
-      const response = await api.get<Order[]>('/orders/?status=Aberto');
-      const data = response.data;
+      const { data, error } = await supabase.from('orders')
+        .select(`*, table:tables(*), items:order_items(*, product:products(*))`)
+        .eq('status', 'Aberto');
+      if (error) throw error;
       
       let shouldAlarm = false;
-      data.forEach(order => {
+      data.forEach((order: any) => {
         const isResponsible = order.waiter_id === user?.id || (order.table && order.table.current_waiter_id === user?.id);
         
-        order.items.forEach(item => {
+        order.items.forEach((item: any) => {
           if (item.status === 'Pronto' && !notifiedItems.current.has(item.id)) {
             if (!isFirstLoad && isResponsible) shouldAlarm = true;
             notifiedItems.current.add(item.id);
@@ -80,7 +82,7 @@ export default function WaiterOrders() {
         ...o, items: o.items.map(i => i.id === itemId ? { ...i, status: 'Entregue' } : i)
       } : o));
       
-      await api.put(`/orders/${orderId}/items/${itemId}/status?status=Entregue`);
+      await supabase.from('order_items').update({ status: 'Entregue' }).eq('id', itemId);
     } catch (e) {
       console.error("Erro ao entregar item", e);
       fetchOrders(false); // Revert on failure

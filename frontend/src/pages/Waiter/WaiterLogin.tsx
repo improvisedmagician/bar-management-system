@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../services/api';
-import type { User } from '../../services/api';
+import { supabase } from '../../services/api';
+
 import { UserCircle, ArrowRight } from 'lucide-react';
 
 export default function WaiterLogin() {
@@ -19,17 +19,16 @@ export default function WaiterLogin() {
     
     setLoading(true);
     try {
-      const response = await api.post<User>('/auth/login', { name });
-      const user = response.data;
+      const { data: user, error: fetchError } = await supabase.from('users').select('*').ilike('name', name).in('role', ['Garçom', 'Admin']).single();
       
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      navigate('/waiter/dashboard');
-    } catch (err: any) {
-      if (err.response && err.response.status === 401) {
+      if (fetchError || !user) {
         setError('Nome não encontrado ou sem permissão de garçom');
       } else {
-        setError('Erro de conexão com o servidor');
+        localStorage.setItem('bar_user', JSON.stringify(user));
+        navigate('/waiter/dashboard');
       }
+    } catch (err: any) {
+      setError('Erro de conexão com o servidor');
     } finally {
       setLoading(false);
     }

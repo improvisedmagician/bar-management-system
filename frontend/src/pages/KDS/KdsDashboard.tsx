@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Clock, ChefHat, Martini, ArrowLeft } from 'lucide-react';
-import { api } from '../../services/api';
-import type { Order } from '../../services/api';
+import { supabase } from '../../services/api';
+
 import { useNavigate } from 'react-router-dom';
 
 interface KdsItem {
@@ -30,27 +30,28 @@ export default function KdsDashboard() {
 
   const fetchOrders = async () => {
     try {
-      const res = await api.get<Order[]>('/orders/?status=Aberto');
-      const orders = res.data;
-      const allItems: KdsItem[] = [];
+      const { data: orders, error } = await supabase.from('orders')
+        .select(`*, table:tables(*), items:order_items(*, product:products(*, category:categories(*)))`)
+        .eq('status', 'Aberto');
+      if (error) throw error;
       
-      orders.forEach(order => {
-        order.items.forEach(item => {
+      const allItems: KdsItem[] = [];
+      orders.forEach((order: any) => {
+        order.items.forEach((item: any) => {
           const mappedStatus = item.status === 'Na Fila' ? 'Pendente' : item.status;
           allItems.push({
             id: item.id,
-            productName: item.product.name,
-            tableNumber: order.table.number,
+            productName: item.product?.name || 'Desconhecido',
+            tableNumber: order.table?.number || 0,
             quantity: item.quantity,
             observations: item.observations,
             status: mappedStatus as any,
-            destination: item.product.category?.type || 'Bar',
-            createdAt: new Date(item.created_at + 'Z').getTime()
+            destination: item.product?.category?.type || 'Bar',
+            createdAt: new Date(item.created_at).getTime()
           });
         });
       });
 
-      // Se houver mais itens pendentes do que antes, toca o som
       if (prevItemsCountRef.current > 0 && allItems.length > prevItemsCountRef.current) {
         if (window.location.pathname.startsWith('/kds') || window.location.pathname.startsWith('/kitchen')) {
           try {
@@ -68,14 +69,21 @@ export default function KdsDashboard() {
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 3000);
-    return () => clearInterval(interval);
+    const channel = supabase.channel('kds-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
+        fetchOrders();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const moveItem = async (id: number, newStatus: 'Pendente' | 'Em Preparo' | 'Pronto' | 'Entregue') => {
     setItems(items.map(i => i.id === id ? { ...i, status: newStatus } : i));
     try {
-      await api.put(`/orders/1/items/${id}/status?status=${newStatus}`);
+      await supabase.from('order_items').update({ status: newStatus }).eq('id', id);
     } catch (e) {
       console.error(e);
     }

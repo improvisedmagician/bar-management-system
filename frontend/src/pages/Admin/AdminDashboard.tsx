@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { TrendingUp, Users, DollarSign, Package, Menu, X, LayoutGrid } from 'lucide-react';
-import { api } from '../../services/api';
+import { supabase } from '../../services/api';
 import type { Product, User, Category, Table } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,38 +41,64 @@ export default function AdminDashboard() {
 
   const fetchMetrics = async () => {
     try {
-      const res = await api.get('/admin/metrics');
-      setMetrics(res.data);
+      const { data: payments } = await supabase.from('payments').select('amount, created_at, order_id');
+      const { data: orders } = await supabase.from('orders').select('id, status');
+      const { data: orderItems } = await supabase.from('order_items').select('product_id, quantity, product:products(name)');
+
+      const total_revenue = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
+      const completed_orders = orders?.filter(o => o.status === 'Fechado').length || 0;
+      const average_ticket = completed_orders > 0 ? total_revenue / completed_orders : 0;
+
+      const productCounts: Record<string, number> = {};
+      orderItems?.forEach(item => {
+        const name = (item.product as any)?.name || 'Desconhecido';
+        productCounts[name] = (productCounts[name] || 0) + item.quantity;
+      });
+      const top_products = Object.entries(productCounts)
+        .map(([name, amount]) => ({ name, amount }))
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+
+      const salesByDate: Record<string, number> = {};
+      payments?.forEach(p => {
+        const date = new Date(p.created_at).toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+        salesByDate[date] = (salesByDate[date] || 0) + p.amount;
+      });
+      const sales_over_time = Object.entries(salesByDate).map(([time, total]) => ({ time, total }));
+
+      setMetrics({ total_revenue, average_ticket, completed_orders, sales_over_time, top_products });
     } catch (e) { console.error(e); }
   };
 
   const fetchProducts = async () => {
     try {
-      const res = await api.get<Product[]>('/menu/products?all=true');
-      setProducts(res.data);
-      const catRes = await api.get<Category[]>('/menu/categories');
-      setCategories(catRes.data);
+      const { data: productsData } = await supabase.from('products').select('*, category:categories(*)').order('id');
+      if (productsData) setProducts(productsData as any);
+      
+      const { data: catData } = await supabase.from('categories').select('*').order('id');
+      if (catData) setCategories(catData as any);
     } catch (e) { console.error(e); }
   };
 
   const fetchUsers = async () => {
     try {
-      const res = await api.get<User[]>('/auth/users');
-      setUsers(res.data);
+      const { data } = await supabase.from('users').select('*').order('id');
+      if (data) setUsers(data as any);
     } catch (e) { console.error(e); }
   };
 
   const fetchTables = async () => {
     try {
-      const res = await api.get<Table[]>('/tables/');
-      setTables(res.data);
+      const { data } = await supabase.from('tables').select('*').order('number');
+      if (data) setTables(data as any);
     } catch (e) { console.error(e); }
   };
 
   const handleAddTable = async () => {
     const number = tables.length > 0 ? Math.max(...tables.map(t => t.number)) + 1 : 1;
     try {
-      await api.post('/tables/', { number, status: 'Livre' });
+      const { error } = await supabase.from('tables').insert([{ number, status: 'Livre' }]);
+      if (error) throw error;
       fetchTables();
     } catch(e) { alert('Erro ao criar mesa'); }
   };
@@ -80,7 +106,8 @@ export default function AdminDashboard() {
   const handleDeleteTable = async (id: number) => {
     if(confirm('Atenção: Tem certeza que deseja remover esta mesa?')) {
       try {
-        await api.delete(`/tables/${id}`);
+        const { error } = await supabase.from('tables').delete().eq('id', id);
+        if (error) throw error;
         fetchTables();
       } catch(e) { alert('Mesa possui pedidos atrelados ou erro ao deletar.'); }
     }
@@ -88,20 +115,16 @@ export default function AdminDashboard() {
 
   const toggleProductStatus = async (product: Product) => {
     try {
-      await api.put(`/menu/products/${product.id}`, {
-        name: product.name, price: product.price, is_active: !product.is_active,
-        category_id: product.category_id, stock_quantity: product.stock_quantity
-      });
+      const { error } = await supabase.from('products').update({ is_active: !product.is_active }).eq('id', product.id);
+      if (error) throw error;
       fetchProducts();
     } catch (e) { alert("Erro"); }
   };
 
   const updateStock = async (product: Product, newStock: number) => {
     try {
-      await api.put(`/menu/products/${product.id}`, {
-        name: product.name, price: product.price, is_active: product.is_active,
-        category_id: product.category_id, stock_quantity: newStock
-      });
+      const { error } = await supabase.from('products').update({ stock_quantity: newStock }).eq('id', product.id);
+      if (error) throw error;
       fetchProducts();
     } catch (e) { alert("Erro"); }
   };
@@ -109,7 +132,8 @@ export default function AdminDashboard() {
   const handleCreateProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/menu/products', newProduct);
+      const { error } = await supabase.from('products').insert([newProduct]);
+      if (error) throw error;
       setIsModalOpen(false);
       setNewProduct({ name: '', price: 0, category_id: categories[0]?.id || 1, stock_quantity: -1 });
       fetchProducts();
@@ -119,27 +143,34 @@ export default function AdminDashboard() {
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/menu/categories', newCategory);
+      const { error } = await supabase.from('categories').insert([newCategory]);
+      if (error) throw error;
       setIsCategoryModalOpen(false);
       setNewCategory({ name: '', type: 'Bar' });
-      fetchProducts(); // Reloads categories
+      fetchProducts();
     } catch (e) { alert('Erro ao criar categoria'); }
   };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/auth/users', newUser);
+      const { error } = await supabase.from('users').insert([{
+        name: newUser.name,
+        role: newUser.role,
+        pin: newUser.pin ? newUser.pin : null
+      }]);
+      if (error) throw error;
       setIsUserModalOpen(false);
       setNewUser({ name: '', role: 'Garçom', pin: '' });
       fetchUsers();
-    } catch (e: any) { alert(e.response?.data?.detail || 'Erro ao criar usuário'); }
+    } catch (e: any) { alert(e.message || 'Erro ao criar usuário'); }
   };
 
   const handleDeleteUser = async (userId: number) => {
     if(confirm('Deseja realmente remover este usuário?')) {
       try {
-        await api.delete(`/auth/users/${userId}`);
+        const { error } = await supabase.from('users').delete().eq('id', userId);
+        if (error) throw error;
         fetchUsers();
       } catch (e) { alert('Erro ao excluir usuário'); }
     }

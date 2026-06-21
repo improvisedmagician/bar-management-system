@@ -8,7 +8,7 @@ import KdsDashboard from './pages/KDS/KdsDashboard'
 import PosDashboard from './pages/POS/PosDashboard'
 import AdminDashboard from './pages/Admin/AdminDashboard'
 import Home from './pages/Home'
-import { api } from './services/api'
+import { supabase } from './services/api'
 
 function App() {
   const [notification, setNotification] = useState<{message: string, id: number} | null>(null);
@@ -20,15 +20,16 @@ function App() {
 
     const poll = async () => {
       try {
-        const res = await api.get('/orders/?status=Aberto');
+        const { data: orders, error } = await supabase.from('orders').select('table_id, items:order_items(status)').eq('status', 'Aberto');
+        if (error) return;
         let currentPronto = 0;
         let latestTable = null;
 
-        res.data.forEach((order: any) => {
+        orders.forEach((order: any) => {
           order.items.forEach((item: any) => {
             if (item.status === 'Pronto') {
               currentPronto++;
-              latestTable = order.table?.number;
+              latestTable = order.table_id;
             }
           });
         });
