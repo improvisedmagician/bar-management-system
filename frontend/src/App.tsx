@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import WaiterLogin from './pages/Waiter/WaiterLogin'
 import WaiterDashboard from './pages/Waiter/WaiterDashboard'
 import WaiterMenu from './pages/Waiter/WaiterMenu'
@@ -12,42 +12,35 @@ import { supabase } from './services/api'
 
 function App() {
   const [notification, setNotification] = useState<{message: string, id: number} | null>(null);
-  const prevProntoRef = useRef(0);
 
-  // Polling para notificações do garçom
+  // Notificações em Tempo Real para o garçom
   useEffect(() => {
     if (!window.location.pathname.startsWith('/waiter')) return;
 
-    const poll = async () => {
-      try {
-        const { data: orders, error } = await supabase.from('orders').select('table_id, items:order_items(status)').eq('status', 'Aberto');
-        if (error) return;
-        let currentPronto = 0;
-        let latestTable = null;
-
-        orders.forEach((order: any) => {
-          order.items.forEach((item: any) => {
-            if (item.status === 'Pronto') {
-              currentPronto++;
-              latestTable = order.table_id;
-            }
-          });
-        });
-
-        if (prevProntoRef.current > 0 && currentPronto > prevProntoRef.current) {
-          setNotification({ message: `Pedido da Mesa ${latestTable} está pronto!`, id: Date.now() });
+    const channel = supabase.channel('waiter-notifications')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'order_items', filter: "status=eq.Pronto" }, async (payload: any) => {
+        try {
+          // Busca o número da mesa para este pedido
+          const { data } = await supabase.from('orders').select('table:tables(number)').eq('id', payload.new.order_id).single();
+          const tableNum = (data?.table as any)?.number || '?';
+          
+          setNotification({ message: `Pedido da Mesa ${tableNum} está pronto!`, id: Date.now() });
+          
           try {
             const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
             audio.play().catch(() => {});
           } catch (e) {}
+          
           setTimeout(() => setNotification(null), 6000);
+        } catch (e) {
+          console.error("Erro na notificação", e);
         }
-        prevProntoRef.current = currentPronto;
-      } catch (e) {}
-    };
+      })
+      .subscribe();
 
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
