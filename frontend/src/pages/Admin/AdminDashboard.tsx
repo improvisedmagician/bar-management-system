@@ -381,7 +381,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {users.map((u) => (
                 <div key={u.id} className="glass-card p-6 rounded-[2rem] flex flex-col items-center text-center relative group border border-white/5">
-                  <button onClick={() => handleDeleteUser(u.id)} className="absolute top-4 right-4 bg-red-500/10 text-red-400 border border-red-500/20 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"><X size={16}/></button>
+                  <button onClick={() => handleDeleteUser(u.id)} className="absolute top-4 right-4 bg-red-500/10 text-red-400 border border-red-500/20 p-2 rounded-lg transition-all hover:bg-red-500/20 active:scale-95"><X size={16}/></button>
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-900/40 to-teal-900/40 border border-blue-500/20 text-blue-400 rounded-full flex items-center justify-center font-black text-2xl mb-4 shadow-sm">
                     {u.name.charAt(0).toUpperCase()}
                   </div>
@@ -411,7 +411,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-6">
               {tables.map((t) => (
                 <div key={t.id} className="glass-card p-6 rounded-[2rem] flex flex-col items-center justify-center text-center relative group h-32 border border-white/5">
-                  <button onClick={() => handleDeleteTable(t.id)} className="absolute top-2 right-2 bg-red-500/10 text-red-400 p-2 border border-red-500/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/20"><X size={14}/></button>
+                  <button onClick={() => handleDeleteTable(t.id)} className="absolute top-2 right-2 bg-red-500/10 text-red-400 p-2 border border-red-500/20 rounded-lg transition-all hover:bg-red-500/20 active:scale-95"><X size={14}/></button>
                   <span className="text-4xl font-black text-white">{t.number}</span>
                   <span className={`mt-2 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${t.status === 'Livre' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-white/5 text-slate-400 border-white/10'}`}>
                     {t.status}
