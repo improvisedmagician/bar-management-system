@@ -6,7 +6,8 @@ export function useWebSocket() {
 
   useEffect(() => {
     // Conecta ao servidor WebSocket
-    ws.current = new WebSocket('ws://localhost:8000/ws/stream');
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/stream';
+    ws.current = new WebSocket(wsUrl);
 
     ws.current.onopen = () => {
       console.log('WebSocket Connected');

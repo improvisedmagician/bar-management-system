@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// Na prática isso viria de uma variável de ambiente (ex: import.meta.env.VITE_API_URL)
-export const API_URL = 'http://localhost:8000';
+// Na prática isso viria de uma variável de ambiente no Vercel (ex: import.meta.env.VITE_API_URL)
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const api = axios.create({
   baseURL: API_URL,
