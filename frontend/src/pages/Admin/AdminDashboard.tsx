@@ -133,7 +133,7 @@ export default function AdminDashboard() {
       setIsUserModalOpen(false);
       setNewUser({ name: '', role: 'Garçom', pin: '' });
       fetchUsers();
-    } catch (e) { alert('Erro ao criar usuário'); }
+    } catch (e: any) { alert(e.response?.data?.detail || 'Erro ao criar usuário'); }
   };
 
   const handleDeleteUser = async (userId: number) => {

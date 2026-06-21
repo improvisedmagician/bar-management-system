@@ -46,10 +46,15 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/users", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    if user.pin:
+        existing = db.query(models.User).filter(models.User.pin == user.pin).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Este PIN já está em uso por outro usuário.")
+
     db_user = models.User(
         name=user.name,
         role=user.role,
-        pin=user.pin
+        pin=user.pin if user.pin else None
     )
     if user.password:
         db_user.password_hash = pwd_context.hash(user.password)
