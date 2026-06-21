@@ -62,6 +62,7 @@ export interface Payment {
 export interface Order {
   id: number;
   table_id: number;
+  waiter_id?: number;
   status: string;
   created_at: string;
   items: OrderItem[];

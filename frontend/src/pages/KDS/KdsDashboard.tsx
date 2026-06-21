@@ -72,7 +72,7 @@ export default function KdsDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const moveItem = async (id: number, newStatus: 'Pendente' | 'Em Preparo' | 'Pronto' | 'Entregue', tableNumber: number, orderId?: number) => {
+  const moveItem = async (id: number, newStatus: 'Pendente' | 'Em Preparo' | 'Pronto' | 'Entregue') => {
     setItems(items.map(i => i.id === id ? { ...i, status: newStatus } : i));
     try {
       await api.put(`/orders/1/items/${id}/status?status=${newStatus}`);
@@ -134,7 +134,7 @@ export default function KdsDashboard() {
                 <div className="flex gap-2 mt-5">
                   {status === 'Pendente' && (
                     <button 
-                      onClick={() => moveItem(item.id, 'Em Preparo', item.tableNumber)}
+                      onClick={() => moveItem(item.id, 'Em Preparo')}
                       className="flex-1 bg-blue-500/10 text-blue-400 border border-blue-500/20 font-black py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95"
                     >
                       PREPARAR
@@ -142,7 +142,7 @@ export default function KdsDashboard() {
                   )}
                   {status === 'Em Preparo' && (
                     <button 
-                      onClick={() => moveItem(item.id, 'Pronto', item.tableNumber)}
+                      onClick={() => moveItem(item.id, 'Pronto')}
                       className="flex-1 bg-green-500/10 text-green-400 border border-green-500/20 font-black py-3 rounded-xl hover:bg-green-500 hover:text-white transition-all shadow-sm active:scale-95"
                     >
                       PRONTO
@@ -150,7 +150,7 @@ export default function KdsDashboard() {
                   )}
                   {status === 'Pronto' && (
                     <button 
-                      onClick={() => moveItem(item.id, 'Entregue', item.tableNumber)}
+                      onClick={() => moveItem(item.id, 'Entregue')}
                       className="flex-1 bg-white/5 text-slate-300 font-black py-3 rounded-xl hover:bg-white/20 transition-all shadow-sm active:scale-95"
                     >
                       ENTREGUE
