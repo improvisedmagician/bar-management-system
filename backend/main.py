@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 import models
 from database import engine, get_db
-from routers import menu, tables, orders, auth, websockets, cash_register, admin
+from routers import menu, tables, orders, auth, cash_register, admin
 
 # Cria as tabelas no banco de dados local
 models.Base.metadata.create_all(bind=engine)
