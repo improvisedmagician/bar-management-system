@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import { TrendingUp, Users, DollarSign, Package, Menu, X, LayoutGrid } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Product, User, Category, Table } from '../../services/api';
