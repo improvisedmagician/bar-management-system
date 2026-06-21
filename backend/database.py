@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
-# Ler do ambiente (Nuvem/Supabase) ou fallback para local SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bar_management.db")
+# Ler do ambiente (Nuvem/Supabase) ou fallback para local SQLite no /tmp
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:////tmp/bar_management.db")
 
 # O SQLAlchemy 1.4+ exige 'postgresql://' ao invés de 'postgres://'
 if DATABASE_URL.startswith("postgres://"):

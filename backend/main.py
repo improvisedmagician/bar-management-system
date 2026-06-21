@@ -7,7 +7,10 @@ from database import engine, get_db
 from routers import menu, tables, orders, auth, cash_register, admin
 
 # Cria as tabelas no banco de dados local
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print("Aviso: Falha ao tentar criar tabelas no boot:", e)
 
 app = FastAPI(title="Bar Management System API")
 
