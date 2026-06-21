@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import WaiterLogin from './pages/Waiter/WaiterLogin'
 import WaiterDashboard from './pages/Waiter/WaiterDashboard'
 import WaiterMenu from './pages/Waiter/WaiterMenu'
@@ -8,28 +8,46 @@ import KdsDashboard from './pages/KDS/KdsDashboard'
 import PosDashboard from './pages/POS/PosDashboard'
 import AdminDashboard from './pages/Admin/AdminDashboard'
 import Home from './pages/Home'
-import { useWebSocket } from './hooks/useWebSocket'
+import { api } from './services/api'
 
 function App() {
-  const { lastMessage } = useWebSocket();
   const [notification, setNotification] = useState<{message: string, id: number} | null>(null);
+  const prevProntoRef = useRef(0);
 
-  // Escuta os eventos reais via WebSocket
+  // Polling para notificações do garçom
   useEffect(() => {
-    if (lastMessage && lastMessage.event === 'order_ready') {
-      // Toca apenas se estiver em telas do garçom
-      if (window.location.pathname.startsWith('/waiter')) {
-        setNotification({ message: lastMessage.message, id: Date.now() });
-        // Toca um pequeno som de alerta
-        try {
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          audio.play().catch(() => {});
-        } catch (e) {}
-        
-        setTimeout(() => setNotification(null), 6000);
-      }
-    }
-  }, [lastMessage]);
+    if (!window.location.pathname.startsWith('/waiter')) return;
+
+    const poll = async () => {
+      try {
+        const res = await api.get('/orders/?status=Aberto');
+        let currentPronto = 0;
+        let latestTable = null;
+
+        res.data.forEach((order: any) => {
+          order.items.forEach((item: any) => {
+            if (item.status === 'Pronto') {
+              currentPronto++;
+              latestTable = order.table?.number;
+            }
+          });
+        });
+
+        if (prevProntoRef.current > 0 && currentPronto > prevProntoRef.current) {
+          setNotification({ message: `Pedido da Mesa ${latestTable} está pronto!`, id: Date.now() });
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.play().catch(() => {});
+          } catch (e) {}
+          setTimeout(() => setNotification(null), 6000);
+        }
+        prevProntoRef.current = currentPronto;
+      } catch (e) {}
+    };
+
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="w-full min-h-screen bg-[#09090b] text-slate-200 font-sans relative">

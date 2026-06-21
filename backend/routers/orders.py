@@ -6,7 +6,6 @@ import json
 import models
 import schemas
 from database import get_db
-from routers.websockets import manager
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
@@ -40,7 +39,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     return db_order
 
 @router.post("/{order_id}/items", response_model=schemas.OrderItem)
-async def add_item_to_order(order_id: int, item: schemas.OrderItemCreate, db: Session = Depends(get_db)):
+def add_item_to_order(order_id: int, item: schemas.OrderItemCreate, db: Session = Depends(get_db)):
     order = db.query(models.Order).filter(models.Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -69,38 +68,16 @@ async def add_item_to_order(order_id: int, item: schemas.OrderItemCreate, db: Se
     db.commit()
     db.refresh(db_item)
     
-    # Prepara objeto para broadcast
-    ws_data = {
-        "event": "new_order_item",
-        "data": {
-            "id": db_item.id,
-            "product_name": product.name if product else "Desconhecido",
-            "quantity": db_item.quantity,
-            "observations": db_item.observations,
-            "table_number": order.table.number,
-            "destination": destination,
-            "status": initial_status
-        }
-    }
-    await manager.broadcast(ws_data)
-    
     return db_item
 
 @router.put("/{order_id}/items/{item_id}/status")
-async def update_item_status(order_id: int, item_id: int, status: str, db: Session = Depends(get_db)):
+def update_item_status(order_id: int, item_id: int, status: str, db: Session = Depends(get_db)):
     item = db.query(models.OrderItem).filter(models.OrderItem.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item não encontrado")
     
     item.status = status
     db.commit()
-    
-    # Avisar garçom se estiver pronto
-    if status == "Pronto":
-        await manager.broadcast({
-            "event": "order_ready",
-            "message": f"Pedido da Mesa {item.order.table.number} está pronto!"
-        })
     
     return {"status": "success"}
 

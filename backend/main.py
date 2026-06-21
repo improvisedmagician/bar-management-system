@@ -19,14 +19,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router)
-app.include_router(websockets.router)
-app.include_router(menu.router)
-app.include_router(tables.router)
-app.include_router(orders.router)
-app.include_router(cash_register.router)
-app.include_router(admin.router)
+from fastapi import APIRouter
 
+api_router = APIRouter(prefix="/api")
+api_router.include_router(auth.router)
+api_router.include_router(menu.router)
+api_router.include_router(tables.router)
+api_router.include_router(orders.router)
+api_router.include_router(cash_register.router)
+api_router.include_router(admin.router)
+
+app.include_router(api_router)
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "Bar Management System API is running"}

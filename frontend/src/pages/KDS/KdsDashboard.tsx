@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Clock, ChefHat, Martini, ArrowLeft } from 'lucide-react';
 import { api } from '../../services/api';
 import type { Order } from '../../services/api';
-import { useWebSocket } from '../../hooks/useWebSocket';
 import { useNavigate } from 'react-router-dom';
 
 interface KdsItem {
@@ -22,16 +21,11 @@ export default function KdsDashboard() {
   const [filter, setFilter] = useState<'Todos' | 'Cozinha' | 'Bar'>('Cozinha');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [items, setItems] = useState<KdsItem[]>([]);
-  
-  const { lastMessage } = useWebSocket();
+  const prevItemsCountRef = useRef(0);
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(Date.now()), 60000);
     return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    fetchOrders();
   }, []);
 
   const fetchOrders = async () => {
@@ -55,6 +49,17 @@ export default function KdsDashboard() {
           });
         });
       });
+
+      // Se houver mais itens pendentes do que antes, toca o som
+      if (prevItemsCountRef.current > 0 && allItems.length > prevItemsCountRef.current) {
+        if (window.location.pathname.startsWith('/kds') || window.location.pathname.startsWith('/kitchen')) {
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            audio.play().catch(() => {});
+          } catch (e) {}
+        }
+      }
+      prevItemsCountRef.current = allItems.length;
       setItems(allItems);
     } catch (e) {
       console.error('Erro ao buscar pedidos do KDS', e);
@@ -62,29 +67,10 @@ export default function KdsDashboard() {
   };
 
   useEffect(() => {
-    if (lastMessage && lastMessage.event === 'new_order_item') {
-      const data = lastMessage.data;
-      const initialStatus = data.status === 'Na Fila' ? 'Pendente' : (data.status || 'Pendente');
-      
-      setItems(prev => [...prev, {
-        id: data.id,
-        productName: data.product_name,
-        tableNumber: data.table_number,
-        quantity: data.quantity,
-        observations: data.observations,
-        status: initialStatus as any,
-        destination: data.destination,
-        createdAt: Date.now()
-      }]);
-      
-      if (window.location.pathname.startsWith('/kds') || window.location.pathname.startsWith('/kitchen')) {
-        try {
-          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-          audio.play().catch(() => {});
-        } catch (e) {}
-      }
-    }
-  }, [lastMessage]);
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const moveItem = async (id: number, newStatus: 'Pendente' | 'Em Preparo' | 'Pronto' | 'Entregue', tableNumber: number, orderId?: number) => {
     setItems(items.map(i => i.id === id ? { ...i, status: newStatus } : i));
