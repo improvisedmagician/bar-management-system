@@ -60,9 +60,11 @@ export interface Order {
   waiter_id?: number;
   status: string;
   created_at: string;
+  waiter_fee?: number;
   items: OrderItem[];
   payments?: Payment[];
   table: Table;
+  waiter?: User;
 }
 
 export interface CashRegister {
@@ -72,4 +74,15 @@ export interface CashRegister {
   current_balance: number;
   opened_at: string;
   closed_at?: string;
+}
+
+export interface CashTransaction {
+  id: number;
+  cash_register_id: number;
+  user_id?: number;
+  type: string;
+  amount: number;
+  description?: string;
+  created_at: string;
+  user?: User;
 }

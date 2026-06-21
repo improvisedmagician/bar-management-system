@@ -20,6 +20,8 @@ export default function AdminDashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
+  const [waiterFees, setWaiterFees] = useState<Record<number, number>>({});
+  const [cashTransactions, setCashTransactions] = useState<any[]>([]);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,9 +43,15 @@ export default function AdminDashboard() {
 
   const fetchMetrics = async () => {
     try {
-      const { data: payments } = await supabase.from('payments').select('amount, created_at, order_id');
-      const { data: orders } = await supabase.from('orders').select('id, status');
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      
+      const { data: payments } = await supabase.from('payments').select('amount, created_at, order_id').gte('created_at', startOfDay.toISOString());
+      const { data: orders } = await supabase.from('orders').select('id, status').gte('created_at', startOfDay.toISOString());
       const { data: orderItems } = await supabase.from('order_items').select('product_id, quantity, product:products(name)');
+
+      const { data: transactions } = await supabase.from('cash_transactions').select('*, user:users(name)').gte('created_at', startOfDay.toISOString()).order('created_at', { ascending: false });
+      setCashTransactions(transactions || []);
 
       const total_revenue = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
       const completed_orders = orders?.filter(o => o.status === 'Fechado').length || 0;
@@ -84,6 +92,21 @@ export default function AdminDashboard() {
     try {
       const { data } = await supabase.from('users').select('*').order('id');
       if (data) setUsers(data as any);
+
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      const { data: orders } = await supabase.from('orders')
+        .select('waiter_id, waiter_fee')
+        .eq('status', 'Fechado')
+        .gte('created_at', startOfDay.toISOString());
+      
+      const fees: Record<number, number> = {};
+      orders?.forEach(o => {
+        if (o.waiter_id && o.waiter_fee) {
+          fees[o.waiter_id] = (fees[o.waiter_id] || 0) + Number(o.waiter_fee);
+        }
+      });
+      setWaiterFees(fees);
     } catch (e) { console.error(e); }
   };
 
@@ -298,6 +321,42 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            <div className="glass-card p-6 md:p-8 rounded-[2rem] border border-white/5 mt-6">
+              <h3 className="text-sm font-black text-slate-500 uppercase tracking-widest mb-6">Movimentações de Caixa Hoje (Sangrias/Suprimentos)</h3>
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-white/5">
+                      <th className="pb-3 pr-4">Horário</th>
+                      <th className="pb-3 pr-4">Responsável</th>
+                      <th className="pb-3 pr-4">Tipo</th>
+                      <th className="pb-3">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {cashTransactions.map(tx => (
+                      <tr key={tx.id} className="hover:bg-white/5 transition-colors">
+                        <td className="py-4 pr-4 font-medium text-slate-400">{new Date(tx.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
+                        <td className="py-4 pr-4 font-bold text-slate-200">{tx.user?.name || 'Sistema'}</td>
+                        <td className="py-4 pr-4">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${tx.type === 'Suprimento' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-orange-500/10 text-orange-400 border border-orange-500/20'}`}>
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td className={`py-4 font-black ${tx.type === 'Suprimento' ? 'text-green-400' : 'text-orange-400'}`}>
+                          {tx.type === 'Suprimento' ? '+' : '-'} R$ {tx.amount.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                    {cashTransactions.length === 0 && (
+                      <tr><td colSpan={4} className="py-8 text-center text-slate-500 font-medium">Nenhuma movimentação registrada hoje.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         )}
 
@@ -389,6 +448,12 @@ export default function AdminDashboard() {
                   <span className="mt-2 bg-white/10 text-slate-300 border border-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
                     {u.role}
                   </span>
+                  {u.role === 'Garçom' && (
+                    <div className="mt-4 bg-orange-500/10 border border-orange-500/20 text-orange-400 px-4 py-2 rounded-xl w-full">
+                      <p className="text-[10px] font-black uppercase tracking-widest">Taxas Hoje</p>
+                      <p className="text-lg font-black mt-1">R$ {(waiterFees[u.id] || 0).toFixed(2)}</p>
+                    </div>
+                  )}
                   {u.pin && <p className="mt-4 text-sm font-bold text-slate-400 tracking-widest bg-[#27272a]/50 px-4 py-2 rounded-xl w-full border border-white/5">PIN: {u.pin}</p>}
                 </div>
               ))}

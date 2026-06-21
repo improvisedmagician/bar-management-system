@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CreditCard, Banknote, QrCode, Split, Calculator, ArrowLeftRight, Printer, Menu, X } from 'lucide-react';
 import { supabase } from '../../services/api';
-import type { Order, Table } from '../../services/api';
+import type { Order, Table, User } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function PosDashboard() {
@@ -12,51 +12,95 @@ export default function PosDashboard() {
   const [splitType, setSplitType] = useState<'none' | 'equal'>('none');
   const [peopleCount, setPeopleCount] = useState(2);
   const [payments, setPayments] = useState<{method: string, amount: number}[]>([]);
+  const [includeFee, setIncludeFee] = useState(true);
 
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [availableTables, setAvailableTables] = useState<Table[]>([]);
   
   // Cash Register state
   const [cashRegister, setCashRegister] = useState<any>(null);
-  const [isOpeningShift, setIsOpeningShift] = useState(false);
-  const [initialBalance, setInitialBalance] = useState<number>(0);
   const [isClosingShift, setIsClosingShift] = useState(false);
   
   // Mobile sidebar state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const [users, setUsers] = useState<User[]>([]);
+  const [isMovementModalOpen, setIsMovementModalOpen] = useState(false);
+  const [movementType, setMovementType] = useState<'Suprimento' | 'Sangria'>('Suprimento');
+  const [movementAmount, setMovementAmount] = useState<number>(0);
+  const [movementUserId, setMovementUserId] = useState<number | ''>('');
+
   useEffect(() => {
     fetchCurrentShift();
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data } = await supabase.from('users').select('*').order('name');
+      if (data) setUsers(data as User[]);
+    } catch (e) { console.error('Erro ao buscar usuários', e); }
+  };
 
   const fetchCurrentShift = async () => {
     try {
-      const { data } = await supabase.from('cash_registers').select('*').order('id', { ascending: false }).limit(1);
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+      
+      const { data } = await supabase.from('cash_registers')
+        .select('*')
+        .gte('opened_at', startOfDay.toISOString())
+        .order('id', { ascending: false })
+        .limit(1);
+
       if (data && data.length > 0) {
         setCashRegister(data[0]);
         fetchOpenOrders();
       } else {
-        setCashRegister(null);
+        const { data: newData, error } = await supabase.from('cash_registers').insert([{ 
+          status: 'Aberto', 
+          initial_balance: 0, 
+          current_balance: 0 
+        }]).select().single();
+        if (error) throw error;
+        setCashRegister(newData);
+        fetchOpenOrders();
       }
     } catch (e) {
       console.error('Erro ao buscar turno', e);
     }
   };
 
-  const handleOpenShift = async (e: React.FormEvent) => {
+  const handleCashMovement = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!cashRegister || !movementUserId || movementAmount <= 0) return;
+    
     try {
-      const { data, error } = await supabase.from('cash_registers').insert([{ 
-        status: 'Aberto', 
-        initial_balance: initialBalance, 
-        current_balance: initialBalance 
-      }]).select().single();
+      const { error } = await supabase.from('cash_transactions').insert([{
+        cash_register_id: cashRegister.id,
+        user_id: Number(movementUserId),
+        type: movementType,
+        amount: movementAmount
+      }]);
       if (error) throw error;
-      setCashRegister(data);
-      setIsOpeningShift(false);
-      fetchOpenOrders();
-    } catch (e) {
-      alert('Erro ao abrir caixa');
+
+      const newBalance = movementType === 'Suprimento' 
+        ? cashRegister.current_balance + movementAmount
+        : cashRegister.current_balance - movementAmount;
+        
+      const { data: updatedCr } = await supabase.from('cash_registers')
+        .update({ current_balance: newBalance })
+        .eq('id', cashRegister.id)
+        .select().single();
+        
+      if (updatedCr) setCashRegister(updatedCr);
+      
+      setIsMovementModalOpen(false);
+      setMovementAmount(0);
+      setMovementUserId('');
+      alert(`${movementType} registrada com sucesso!`);
+    } catch (error) {
+      alert(`Erro ao registrar movimentação`);
     }
   };
 
@@ -123,6 +167,7 @@ export default function PosDashboard() {
     setSelectedOrder(order);
     setPayments(order.payments || []); 
     setSplitType('none');
+    setIncludeFee(true);
     setIsSidebarOpen(false); // Close sidebar on mobile after selection
   };
 
@@ -139,7 +184,8 @@ export default function PosDashboard() {
 
   const items = selectedOrder?.items || [];
   const subtotal = items.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
-  const total = subtotal;
+  const waiterFee = includeFee ? subtotal * 0.07 : 0;
+  const total = subtotal + waiterFee;
 
   const totalPaid = payments.reduce((acc, p) => acc + p.amount, 0);
   const remaining = total - totalPaid;
@@ -160,7 +206,7 @@ export default function PosDashboard() {
             }
          }
       }
-      await supabase.from('orders').update({ status: 'Fechado' }).eq('id', selectedOrder.id);
+      await supabase.from('orders').update({ status: 'Fechado', waiter_fee: waiterFee }).eq('id', selectedOrder.id);
       await supabase.from('tables').update({ status: 'Livre', current_waiter_id: null }).eq('id', selectedOrder.table_id);
       
       setSelectedOrder(null);
@@ -188,12 +234,17 @@ export default function PosDashboard() {
           <div>
             <h2 className="text-xl font-black text-white tracking-widest">PONTO DE VENDA</h2>
             <p className={`text-xs font-bold uppercase tracking-widest mt-1 ${cashRegister ? 'text-green-400' : 'text-orange-400'}`}>
-              {cashRegister ? 'Caixa Aberto' : 'Caixa Fechado'}
+              {cashRegister ? `Caixa Aberto (R$ ${cashRegister.current_balance?.toFixed(2) || '0.00'})` : 'Caixa Fechado'}
             </p>
           </div>
-          <button onClick={() => cashRegister ? setIsClosingShift(true) : navigate('/')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${cashRegister ? 'bg-red-500/20 text-red-400 hover:bg-red-500/40' : 'bg-white/10 text-white hover:bg-white/20'}`}>
-            {cashRegister ? 'Fechar Caixa' : 'Sair'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setIsMovementModalOpen(true)} className="text-xs font-bold px-3 py-1.5 rounded-lg transition-all bg-blue-500/20 text-blue-400 hover:bg-blue-500/40 hidden md:block">
+              Movimentação
+            </button>
+            <button onClick={() => cashRegister ? setIsClosingShift(true) : navigate('/')} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${cashRegister ? 'bg-red-500/20 text-red-400 hover:bg-red-500/40' : 'bg-white/10 text-white hover:bg-white/20'}`}>
+              {cashRegister ? 'Fechar' : 'Sair'}
+            </button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
@@ -272,7 +323,16 @@ export default function PosDashboard() {
                   <span>Subtotal</span>
                   <span>R$ {subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center text-4xl font-black text-white print:text-black mt-2">
+                
+                <div className="flex justify-between items-center mb-2 text-lg text-slate-400 font-bold print:text-black uppercase tracking-wider text-sm border-t border-white/5 pt-2 mt-2 print:border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={includeFee} onChange={(e) => setIncludeFee(e.target.checked)} className="w-5 h-5 rounded accent-orange-500" />
+                    <span>Taxa (7%)</span>
+                  </label>
+                  {includeFee && <span className="text-orange-400">+ R$ {waiterFee.toFixed(2)}</span>}
+                </div>
+
+                <div className="flex justify-between items-center text-4xl font-black text-white print:text-black mt-4 pt-4 border-t border-white/10 print:border-gray-300">
                   <span>Total</span>
                   <span className="text-blue-400 print:text-black">R$ {total.toFixed(2)}</span>
                 </div>
@@ -408,44 +468,46 @@ export default function PosDashboard() {
         </div>
       )}
 
-      {/* Abre Caixa Modal/Overlay */}
-      {!cashRegister && !isOpeningShift && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex flex-col items-center justify-center p-4">
-          <div className="text-center animate-slide-up">
-            <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Banknote size={48} className="text-white" />
-            </div>
-            <h1 className="text-4xl font-black text-white mb-2">Caixa Fechado</h1>
-            <p className="text-gray-400 font-medium mb-8">Abra o turno para iniciar as vendas e receber pagamentos.</p>
-            <div className="flex gap-4 justify-center">
-              <button onClick={() => navigate('/')} className="bg-white/10 text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/20 transition-all">Voltar</button>
-              <button onClick={() => setIsOpeningShift(true)} className="bg-blue-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 transition-all">Abrir Caixa</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Opening Shift Form */}
-      {!cashRegister && isOpeningShift && (
+      {/* Movement Modal */}
+      {isMovementModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-[#18181b] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl animate-slide-up">
-            <h2 className="text-2xl font-black text-white mb-6">Abrir Turno</h2>
-            <form onSubmit={handleOpenShift} className="space-y-6">
+            <h2 className="text-2xl font-black text-white mb-6">Movimentação de Caixa</h2>
+            <form onSubmit={handleCashMovement} className="space-y-6">
               <div>
-                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Fundo de Troco (R$)</label>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Tipo de Movimentação</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setMovementType('Suprimento')} className={`flex-1 py-3 rounded-xl font-bold transition-all border ${movementType === 'Suprimento' ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-[#27272a] text-slate-400 border-white/5'}`}>
+                    Suprimento (Entrada)
+                  </button>
+                  <button type="button" onClick={() => setMovementType('Sangria')} className={`flex-1 py-3 rounded-xl font-bold transition-all border ${movementType === 'Sangria' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-[#27272a] text-slate-400 border-white/5'}`}>
+                    Sangria (Retirada)
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Responsável</label>
+                <select required value={movementUserId} onChange={(e) => setMovementUserId(e.target.value ? Number(e.target.value) : '')} className="w-full bg-[#27272a] border border-white/10 p-4 rounded-2xl text-white outline-none">
+                  <option value="">Selecione o Garçom/Responsável</option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Valor (R$)</label>
                 <input 
                   type="number" 
                   step="0.01" 
-                  min="0"
+                  min="0.01"
                   required
-                  value={initialBalance}
-                  onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
+                  value={movementAmount || ''}
+                  onChange={(e) => setMovementAmount(parseFloat(e.target.value) || 0)}
                   className="w-full bg-[#27272a] border border-white/10 p-4 rounded-2xl font-black text-2xl text-white focus:ring-4 focus:ring-blue-500/20 outline-none text-center" 
                 />
-                <p className="text-center text-sm text-slate-500 mt-2">Valor inicial na gaveta</p>
               </div>
               <div className="flex gap-3">
-                <button type="button" onClick={() => setIsOpeningShift(false)} className="flex-1 bg-white/5 text-slate-300 font-bold p-4 rounded-2xl hover:bg-white/10">Cancelar</button>
+                <button type="button" onClick={() => setIsMovementModalOpen(false)} className="flex-1 bg-white/5 text-slate-300 font-bold p-4 rounded-2xl hover:bg-white/10">Cancelar</button>
                 <button type="submit" className="flex-1 bg-blue-600 text-white font-bold p-4 rounded-2xl shadow-lg shadow-blue-500/30 hover:bg-blue-500">Confirmar</button>
               </div>
             </form>

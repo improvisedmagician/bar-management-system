@@ -89,6 +89,17 @@ export default function KdsDashboard() {
     }
   };
 
+  const cancelItem = async (id: number) => {
+    if (window.confirm('Tem certeza que deseja cancelar este pedido? Ele será removido da comanda permanentemente.')) {
+      try {
+        await supabase.from('order_items').delete().eq('id', id);
+        setItems(items.filter(i => i.id !== id));
+      } catch (e) {
+        console.error('Erro ao cancelar item', e);
+      }
+    }
+  };
+
   const filteredItems = items.filter(item => filter === 'Todos' || item.destination === filter);
 
   const renderColumn = (title: string, status: 'Pendente' | 'Em Preparo' | 'Pronto', colorClass: string, headerClass: string) => {
@@ -125,9 +136,19 @@ export default function KdsDashboard() {
                       {item.destination === 'Cozinha' ? <ChefHat size={20} /> : <Martini size={20} />}
                     </div>
                   </div>
-                  <div className={`flex items-center gap-1.5 font-bold px-3 py-1.5 rounded-lg ${isLate ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-slate-400'}`}>
-                    <Clock size={16} />
-                    {elapsedMinutes} min
+                  <div className="flex flex-col items-end gap-2">
+                    <div className={`flex items-center gap-1.5 font-bold px-3 py-1.5 rounded-lg ${isLate ? 'bg-red-500/10 text-red-400' : 'bg-white/5 text-slate-400'}`}>
+                      <Clock size={16} />
+                      {elapsedMinutes} min
+                    </div>
+                    {status !== 'Pronto' && (
+                      <button 
+                        onClick={() => cancelItem(item.id)}
+                        className="text-[10px] bg-red-500/10 text-red-400 font-bold px-2 py-1 rounded-md uppercase tracking-widest border border-red-500/20 hover:bg-red-500/20 transition-all"
+                      >
+                        Cancelar
+                      </button>
+                    )}
                   </div>
                 </div>
 

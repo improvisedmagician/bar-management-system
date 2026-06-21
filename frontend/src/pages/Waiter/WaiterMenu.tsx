@@ -31,6 +31,7 @@ export default function WaiterMenu() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [payments, setPayments] = useState<{method: string, amount: number}[]>([]);
+  const [includeFee, setIncludeFee] = useState(true);
 
   useEffect(() => {
     fetchMenu();
@@ -113,7 +114,9 @@ export default function WaiterMenu() {
   };
 
   const consumedItems = activeOrder?.items || [];
-  const totalConsumed = consumedItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  const rawSubtotal = consumedItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  const waiterFee = includeFee ? rawSubtotal * 0.07 : 0;
+  const totalConsumed = rawSubtotal + waiterFee;
   const totalPaid = (activeOrder?.payments || []).reduce((acc: any, p: any) => acc + p.amount, 0) + payments.reduce((acc, p) => acc + p.amount, 0);
   const remainingToPay = totalConsumed - totalPaid;
 
@@ -133,7 +136,7 @@ export default function WaiterMenu() {
            await supabase.from('cash_registers').update({ current_balance: crs[0].current_balance + p.amount }).eq('id', crs[0].id);
         }
       }
-      await supabase.from('orders').update({ status: 'Fechado' }).eq('id', activeOrder.id);
+      await supabase.from('orders').update({ status: 'Fechado', waiter_fee: waiterFee }).eq('id', activeOrder.id);
       await supabase.from('tables').update({ status: 'Livre', current_waiter_id: null }).eq('id', activeOrder.table_id);
       navigate('/waiter/dashboard');
     } catch (e) {
@@ -320,7 +323,16 @@ export default function WaiterMenu() {
                     <span className="text-white font-black">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
                   </div>
                 ))}
-                <div className="border-t border-white/10 mt-4 pt-4 flex justify-between items-center text-xl font-black text-white">
+                
+                <div className="border-t border-white/10 mt-4 pt-4 flex justify-between items-center mb-2">
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <input type="checkbox" checked={includeFee} onChange={(e) => setIncludeFee(e.target.checked)} className="w-5 h-5 rounded accent-orange-500" />
+                    <span className="font-bold text-slate-400">Taxa do Garçom (7%)</span>
+                  </label>
+                  {includeFee && <span className="text-orange-400 font-bold text-lg">+ R$ {waiterFee.toFixed(2)}</span>}
+                </div>
+
+                <div className="border-t border-white/10 mt-2 pt-4 flex justify-between items-center text-xl font-black text-white">
                   <span>Total</span>
                   <span>R$ {totalConsumed.toFixed(2)}</span>
                 </div>

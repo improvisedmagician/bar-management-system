@@ -19,14 +19,25 @@ export default function WaiterLogin() {
     
     setLoading(true);
     try {
-      const { data: user, error: fetchError } = await supabase.from('users').select('*').ilike('name', name).in('role', ['Garçom', 'Admin']).single();
+      let { data: user } = await supabase.from('users').select('*').ilike('name', name).in('role', ['Garçom', 'Admin']).maybeSingle();
       
-      if (fetchError || !user) {
-        setError('Nome não encontrado ou sem permissão de garçom');
-      } else {
-        localStorage.setItem('bar_user', JSON.stringify(user));
-        navigate('/waiter/dashboard');
+      if (!user) {
+        const { data: newUser, error: createError } = await supabase.from('users').insert([{
+          name: name,
+          role: 'Garçom',
+          pin: null
+        }]).select().single();
+        
+        if (createError) {
+          setError('Erro ao registrar novo garçom');
+          setLoading(false);
+          return;
+        }
+        user = newUser;
       }
+
+      localStorage.setItem('bar_user', JSON.stringify(user));
+      navigate('/waiter/dashboard');
     } catch (err: any) {
       setError('Erro de conexão com o servidor');
     } finally {
