@@ -541,6 +541,7 @@ export default function AdminDashboard() {
                 <select value={newCategory.type} onChange={e => setNewCategory({...newCategory, type: e.target.value})} className="glass-input w-full rounded-2xl p-4">
                   <option value="Bar">Bar (Bebidas / Balcão)</option>
                   <option value="Cozinha">Cozinha (Pratos / Petiscos)</option>
+                  <option value="Churrasqueira">Churrasqueira (Espetos)</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-4">

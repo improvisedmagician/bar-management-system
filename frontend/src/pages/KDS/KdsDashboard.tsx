@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Clock, ChefHat, Martini, ArrowLeft } from 'lucide-react';
+import { Clock, ChefHat, Martini, ArrowLeft, Flame } from 'lucide-react';
 import { supabase } from '../../services/api';
 
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,7 @@ interface KdsItem {
 export default function KdsDashboard() {
   const navigate = useNavigate();
   const [view, setView] = useState<'Pedidos' | 'Histórico'>('Pedidos');
-  const [filter, setFilter] = useState<'Todos' | 'Cozinha' | 'Bar'>('Todos');
+  const [filter, setFilter] = useState<'Todos' | 'Cozinha' | 'Bar' | 'Churrasqueira'>('Todos');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [items, setItems] = useState<KdsItem[]>([]);
   const prevItemsCountRef = useRef(0);
@@ -134,7 +134,7 @@ export default function KdsDashboard() {
                       {item.tableNumber}
                     </span>
                     <div className="bg-white/5 p-2 rounded-lg text-slate-400">
-                      {item.destination === 'Cozinha' ? <ChefHat size={20} /> : <Martini size={20} />}
+                      {item.destination === 'Cozinha' ? <ChefHat size={20} /> : item.destination === 'Churrasqueira' ? <Flame size={20} /> : <Martini size={20} />}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -225,7 +225,7 @@ export default function KdsDashboard() {
         </div>
         
         <div className="flex bg-[#18181b]/50 border border-white/5 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
-          {(['Todos', 'Cozinha', 'Bar'] as const).map(type => (
+          {(['Todos', 'Cozinha', 'Bar', 'Churrasqueira'] as const).map(type => (
             <button
               key={type}
               onClick={() => setFilter(type)}
