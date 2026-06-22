@@ -18,7 +18,7 @@ interface KdsItem {
 export default function KdsDashboard() {
   const navigate = useNavigate();
   const [view, setView] = useState<'Pedidos' | 'Histórico'>('Pedidos');
-  const [filter, setFilter] = useState<'Todos' | 'Cozinha' | 'Bar'>('Cozinha');
+  const [filter, setFilter] = useState<'Todos' | 'Cozinha' | 'Bar'>('Todos');
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [items, setItems] = useState<KdsItem[]>([]);
   const prevItemsCountRef = useRef(0);
@@ -30,25 +30,26 @@ export default function KdsDashboard() {
 
   const fetchOrders = async () => {
     try {
-      const { data: orders, error } = await supabase.from('orders')
-        .select(`*, table:tables(*), items:order_items(*, product:products(*, category:categories(*)))`)
-        .eq('status', 'Aberto');
+      const startOfDay = new Date();
+      startOfDay.setHours(0,0,0,0);
+
+      const { data: orderItems, error } = await supabase.from('order_items')
+        .select(`*, product:products(*, category:categories(*)), order:orders(table:tables(*))`)
+        .or(`status.neq.Entregue,and(status.eq.Entregue,created_at.gte.${startOfDay.toISOString()})`);
       if (error) throw error;
       
       const allItems: KdsItem[] = [];
-      orders.forEach((order: any) => {
-        order.items.forEach((item: any) => {
-          const mappedStatus = item.status === 'Na Fila' ? 'Pendente' : item.status;
-          allItems.push({
-            id: item.id,
-            productName: item.product?.name || 'Desconhecido',
-            tableNumber: order.table?.number || 0,
-            quantity: item.quantity,
-            observations: item.observations,
-            status: mappedStatus as any,
-            destination: item.product?.category?.type || 'Bar',
-            createdAt: new Date(item.created_at).getTime()
-          });
+      orderItems.forEach((item: any) => {
+        const mappedStatus = item.status === 'Na Fila' ? 'Pendente' : item.status;
+        allItems.push({
+          id: item.id,
+          productName: item.product?.name || 'Desconhecido',
+          tableNumber: item.order?.table?.number || 0,
+          quantity: item.quantity,
+          observations: item.observations,
+          status: mappedStatus as any,
+          destination: item.product?.category?.type || 'Bar',
+          createdAt: new Date(item.created_at).getTime()
         });
       });
 
