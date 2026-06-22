@@ -272,7 +272,10 @@ export default function PosDashboard() {
                     {order.status}
                   </span>
                 </div>
-                <p className="text-slate-400 font-medium text-sm">Total: <span className="text-blue-400 font-black">R$ {orderTotal.toFixed(2)}</span></p>
+                <div className="flex justify-between items-end mt-1">
+                  <p className="text-slate-400 font-medium text-sm">Total: <span className="text-blue-400 font-black">R$ {orderTotal.toFixed(2)}</span></p>
+                  <span className="text-xs text-slate-500 font-bold">Abertura: {new Date(order.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</span>
+                </div>
               </div>
             );
           })}
@@ -305,7 +308,10 @@ export default function PosDashboard() {
             {/* Bill Items List */}
             <div className="flex-1 glass-card rounded-[2rem] flex flex-col overflow-hidden print:shadow-none print:border-none print:p-0 print:bg-white animate-slide-up border border-white/5">
               <div className="p-6 border-b border-white/5 bg-[#27272a]/30 print:bg-white print:border-b-2 print:border-black">
-                <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs print:text-black print:text-xl">Cupom Não Fiscal - Mesa {selectedOrder.table.number}</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-black text-slate-400 uppercase tracking-widest text-xs print:text-black print:text-xl">Cupom Não Fiscal - Mesa {selectedOrder.table.number}</h3>
+                  <span className="text-xs text-slate-500 font-bold print:text-black print:text-sm">{new Date().toLocaleString('pt-BR')}</span>
+                </div>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4 print:overflow-visible no-scrollbar">
                 {items.map(item => (

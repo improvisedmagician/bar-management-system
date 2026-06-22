@@ -141,6 +141,9 @@ export default function KdsDashboard() {
                       <Clock size={16} />
                       {elapsedMinutes} min
                     </div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-0.5">
+                      {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     {status !== 'Pronto' && (
                       <button 
                         onClick={() => cancelItem(item.id)}
